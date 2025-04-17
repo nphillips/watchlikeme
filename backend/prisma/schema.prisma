@@ -1,0 +1,92 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id             String       @id @default(uuid())
+  email          String       @unique
+  username       String       @unique
+  googleId       String       @unique
+  name           String?
+  image          String?
+  role           Role         @default(USER)
+  // YouTube subscriptions
+  subscriptions  Channel[]    @relation("UserSubscriptions")
+  // Named collections
+  collections    Collection[]
+  createdAt      DateTime     @default(now())
+}
+
+model Channel {
+  id              String     @id @default(uuid())
+  youtubeId       String     @unique
+  title           String
+  thumbnail       String?
+  subscriberCount Int?
+  // Who subscribes
+  subscribers     User[]     @relation("UserSubscriptions")
+  // Optionally store videos if user picks them
+  videos          Video[]
+  // Collections this channel is in
+  collectionItems CollectionItem[]
+  createdAt       DateTime   @default(now())
+}
+
+model Video {
+  id             String    @id @default(uuid())
+  youtubeId      String    @unique
+  title          String
+  thumbnail      String?
+  publishedAt    DateTime?
+  // Reference to parent channel
+  channel        Channel   @relation(fields: [channelId], references: [id])
+  channelId      String
+  // Collections this video is in
+  collectionItems CollectionItem[]
+  createdAt      DateTime  @default(now())
+}
+
+model Collection {
+  id             String           @id @default(uuid())
+  // Unique per user
+  slug           String           
+  name           String
+  description    String?
+  // Single note for the entire collection
+  note           String?
+  isPublic       Boolean          @default(true)
+  // Owner
+  user           User             @relation(fields: [userId], references: [id])
+  userId         String
+  // Items: either a channel or a specific video
+  items          CollectionItem[]
+  createdAt      DateTime         @default(now())
+
+  @@unique([userId, slug])
+}
+
+model CollectionItem {
+  id             String      @id @default(uuid())
+  // Parent collection
+  collection     Collection  @relation(fields: [collectionId], references: [id])
+  collectionId   String
+  // Either channelId or videoId is set
+  channel        Channel?    @relation(fields: [channelId], references: [id])
+  channelId      String?
+  video          Video?      @relation(fields: [videoId], references: [id])
+  videoId        String?
+  createdAt      DateTime    @default(now())
+}

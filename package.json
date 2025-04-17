@@ -23,5 +23,8 @@
     "dev": {
       "functions": "backend/dist"
     }
+  },
+  "dependencies": {
+    "googleapis": "^148.0.0"
   }
 }

@@ -9,6 +9,7 @@ import { PrismaClient, User } from "@prisma/client";
 import slugify from "slugify";
 import * as dotenv from "dotenv";
 import path from "path";
+import router from "./routes";
 
 dotenv.config({ path: path.join(__dirname, "../../.env") });
 
@@ -29,9 +30,11 @@ initPrisma();
 const app = express();
 
 // Middleware
+app.use(express.json());
 app.use(cookieParser());
 app.use(cors({ origin: process.env.ORIGIN, credentials: true }));
 app.use(passport.initialize());
+app.use("/api", router);
 
 passport.use(
   new GoogleStrategy(
@@ -102,5 +105,13 @@ app.get("/api/users/me", async (req, res) => {
     return res.status(401).json({ error: "Not authenticated" });
   }
 });
+
+// Start the server if we're not in a serverless environment
+if (!process.env.NETLIFY) {
+  const PORT = process.env.PORT || 8888;
+  app.listen(PORT, () => {
+    console.log(`Backend server running at http://localhost:${PORT}`);
+  });
+}
 
 export const handler = serverless(app);

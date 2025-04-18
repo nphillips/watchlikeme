@@ -6,8 +6,29 @@ import cors from "cors";
 import jwt from "jsonwebtoken";
 import serverless from "serverless-http";
 import { PrismaClient } from "@prisma/client";
+import slugify from "slugify";
+import * as dotenv from "dotenv";
+import path from "path";
 
+// Load environment variables from root .env file
+dotenv.config({ path: path.join(__dirname, "../../.env") });
+
+// Initialize Prisma
 const prisma = new PrismaClient();
+
+// Connect to the database
+async function initPrisma() {
+  try {
+    await prisma.$connect();
+    console.log("Successfully connected to the database");
+  } catch (error) {
+    console.error("Failed to connect to the database:", error);
+    process.exit(1);
+  }
+}
+
+initPrisma();
+
 const app = express();
 
 // Middleware

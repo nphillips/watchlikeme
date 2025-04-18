@@ -5,18 +5,15 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import jwt from "jsonwebtoken";
 import serverless from "serverless-http";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, User } from "@prisma/client";
 import slugify from "slugify";
 import * as dotenv from "dotenv";
 import path from "path";
 
-// Load environment variables from root .env file
 dotenv.config({ path: path.join(__dirname, "../../.env") });
 
-// Initialize Prisma
 const prisma = new PrismaClient();
 
-// Connect to the database
 async function initPrisma() {
   try {
     await prisma.$connect();
@@ -36,7 +33,6 @@ app.use(cookieParser());
 app.use(cors({ origin: process.env.ORIGIN, credentials: true }));
 app.use(passport.initialize());
 
-// Passport Google Strategy
 passport.use(
   new GoogleStrategy(
     {
@@ -45,11 +41,9 @@ passport.use(
       callbackURL: `${process.env.ORIGIN}/api/auth/google/callback`,
     },
     async (_, __, profile, done) => {
-      // Extract email and name
       const email = profile.emails?.[0].value!;
       const name = profile.displayName;
 
-      // Find or create user
       const user = await prisma.user.upsert({
         where: { email },
         update: { name, googleId: profile.id },
@@ -82,15 +76,12 @@ app.get(
   "/api/auth/google/callback",
   passport.authenticate("google", { session: false, failureRedirect: "/" }),
   (req, res) => {
-    // @ts-ignore req.user is User
-    const user = req.user!;
-    // Create JWT
+    const user = req.user! as User;
     const token = jwt.sign(
       { sub: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET!,
       { expiresIn: "7d" }
     );
-    // Set cookie and redirect home
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -99,12 +90,12 @@ app.get(
   }
 );
 
-// Optional: endpoint to get current user
 app.get("/api/users/me", async (req, res) => {
   const token = req.cookies.token || "";
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET!);
-    // @ts-ignore
+    const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
+      sub: string;
+    };
     const user = await prisma.user.findUnique({ where: { id: payload.sub } });
     return res.json(user);
   } catch {

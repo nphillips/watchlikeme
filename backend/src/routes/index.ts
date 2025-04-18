@@ -1,16 +1,16 @@
-import express from "express";
-import authRouter from "./auth/index";
-import usersRouter from "./users/index";
-import channelsRouter from "./channels/index";
+import { Router } from "express";
+import authRoutes from "./auth";
+import userRoutes from "./users";
+import channelRoutes from "./channels";
 import collectionsRouter from "./collections/index";
 import healthRouter from "./health";
 
-const router = express.Router();
+const router = Router();
 
 // Mount routes
-router.use("/auth", authRouter);
-router.use("/users", usersRouter);
-router.use("/channels", channelsRouter);
+router.use("/auth", authRoutes);
+router.use("/users", userRoutes);
+router.use("/channels", channelRoutes);
 router.use("/collections", collectionsRouter);
 router.use("/health", healthRouter);
 

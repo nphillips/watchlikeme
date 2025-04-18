@@ -10,10 +10,14 @@ const router = express.Router();
 // POST /api/users - Create or update user and return JWT
 router.post("/", async (req, res) => {
   try {
-    const { email, name, googleId } = req.body;
+    const { email, name, googleId, accessToken } = req.body;
 
     if (!email) {
       return res.status(400).json({ error: "Email is required" });
+    }
+
+    if (!accessToken) {
+      return res.status(400).json({ error: "Access token is required" });
     }
 
     // Generate a username from email if not provided
@@ -41,6 +45,7 @@ router.post("/", async (req, res) => {
         email: user.email,
         role: user.role,
         name: user.name,
+        accessToken,
       },
       env.JWT_SECRET,
       { expiresIn: "7d" }

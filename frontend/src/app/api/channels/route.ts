@@ -1,40 +1,57 @@
 import { NextResponse } from "next/server";
+import { google } from "googleapis";
 import { cookies } from "next/headers";
-import { env } from "@/env";
 
 export async function GET() {
   try {
+    // Get the tokens from the cookie
     const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const tokensCookie = cookieStore.get("google_tokens")?.value;
 
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!tokensCookie) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const response = await fetch(`${env.BACKEND_URL}/api/channels`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    const tokens = JSON.parse(tokensCookie);
+
+    // Initialize the OAuth2 client
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      `${process.env.ORIGIN}/api/auth/google/callback`
+    );
+
+    // Set the credentials
+    oauth2Client.setCredentials(tokens);
+
+    // Initialize the YouTube API client
+    const youtube = google.youtube("v3");
+
+    // Fetch subscriptions
+    const response = await youtube.subscriptions.list({
+      auth: oauth2Client,
+      part: ["snippet"],
+      mine: true,
+      maxResults: 50,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("Backend error:", errorData);
-      return NextResponse.json(
-        { error: "Failed to fetch channels", details: errorData },
-        { status: response.status }
-      );
+    if (!response.data.items) {
+      return NextResponse.json([]);
     }
 
-    const channels = await response.json();
+    // Format the channels data
+    const channels = response.data.items.map((item) => ({
+      id: item.snippet?.resourceId?.channelId,
+      title: item.snippet?.title,
+      thumbnailUrl: item.snippet?.thumbnails?.default?.url,
+      subscriberCount: 0, // This would require an additional API call to get
+    }));
+
     return NextResponse.json(channels);
   } catch (error) {
-    console.error("Error in channels API route:", error);
+    console.error("Error fetching YouTube subscriptions:", error);
     return NextResponse.json(
-      {
-        error: "Internal server error",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
+      { error: "Failed to fetch subscriptions" },
       { status: 500 }
     );
   }

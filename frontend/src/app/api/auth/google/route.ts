@@ -5,7 +5,7 @@ import { env } from "@/env";
 const oauth2Client = new google.auth.OAuth2(
   env.GOOGLE_CLIENT_ID,
   env.GOOGLE_CLIENT_SECRET,
-  `${env.NEXT_PUBLIC_ORIGIN}/api/auth/google/callback`
+  `${env.ORIGIN || "http://localhost:3000"}/api/auth/google/callback`
 );
 
 export async function GET() {
@@ -17,6 +17,11 @@ export async function GET() {
       "https://www.googleapis.com/auth/youtube.readonly",
     ],
     prompt: "consent",
+  });
+
+  console.log("Generated auth URL:", {
+    url: authUrl,
+    clientId: env.GOOGLE_CLIENT_ID,
   });
 
   return NextResponse.redirect(authUrl);

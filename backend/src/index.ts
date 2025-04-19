@@ -5,13 +5,22 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import jwt from "jsonwebtoken";
 import serverless from "serverless-http";
-import { PrismaClient, User } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import slugify from "slugify";
-import * as dotenv from "dotenv";
 import path from "path";
 import router from "./routes";
+import authRoutes from "./routes/auth";
+import usersRoutes from "./routes/users";
+import { env } from "./env";
 
-dotenv.config({ path: path.join(__dirname, "../../.env") });
+// User type definition for TypeScript since we can't import it directly from Prisma
+type User = {
+  id: string;
+  email: string;
+  name?: string | null;
+  googleId?: string | null;
+  role: "USER" | "ADMIN";
+};
 
 const prisma = new PrismaClient();
 
@@ -35,30 +44,61 @@ app.use(cookieParser());
 app.use(cors({ origin: process.env.ORIGIN, credentials: true }));
 app.use(passport.initialize());
 app.use("/api", router);
+// Register new routes
+app.use("/api/auth", authRoutes);
+app.use("/api/users", usersRoutes);
 
+// Google OAuth strategy that only checks for user existence
+// The frontend will handle registration if the user doesn't exist
 passport.use(
   new GoogleStrategy(
     {
-      clientID: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      callbackURL: `${process.env.ORIGIN}/api/auth/google/callback`,
+      clientID: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET,
+      callbackURL: `${env.ORIGIN}/api/auth/google/callback`,
     },
     async (_, __, profile, done) => {
-      const email = profile.emails?.[0].value!;
-      const name = profile.displayName;
+      try {
+        const email = profile.emails?.[0].value!;
 
-      const user = await prisma.user.upsert({
-        where: { email },
-        update: { name, googleId: profile.id },
-        create: {
+        // Check if a user with this Google ID already exists
+        let user = await prisma.user.findUnique({
+          where: { googleId: profile.id },
+        });
+
+        if (user) {
+          // If user exists, return it
+          return done(null, user);
+        }
+
+        // Check if a user with this email already exists
+        user = await prisma.user.findUnique({
+          where: { email },
+        });
+
+        if (user) {
+          // If user exists but doesn't have googleId, update it
+          if (!user.googleId) {
+            user = await prisma.user.update({
+              where: { id: user.id },
+              data: { googleId: profile.id },
+            });
+          }
+          return done(null, user);
+        }
+
+        // Return a temporary user object for authentication
+        // The actual user will be created during registration
+        return done(null, {
+          id: "temp",
           email,
-          name,
+          name: profile.displayName,
           googleId: profile.id,
-          username: slugify(name, { lower: true }),
-        },
-      });
-
-      done(null, user);
+          role: "USER",
+        } as User);
+      } catch (error) {
+        return done(error as Error);
+      }
     }
   )
 );
@@ -80,6 +120,15 @@ app.get(
   passport.authenticate("google", { session: false, failureRedirect: "/" }),
   (req, res) => {
     const user = req.user! as User;
+
+    // If it's a temporary user (no WatchLikeMe account yet)
+    if (user.id === "temp") {
+      // Redirect to frontend registration completion page
+      res.redirect("/complete-registration");
+      return;
+    }
+
+    // Otherwise proceed with normal login flow
     const token = jwt.sign(
       { sub: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET!,

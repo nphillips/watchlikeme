@@ -8,11 +8,36 @@ export async function GET() {
     const cookieStore = await cookies();
     const tokensCookie = cookieStore.get("google_tokens")?.value;
 
+    console.log("Google tokens cookie exists:", !!tokensCookie);
+
     if (!tokensCookie) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+      console.log(
+        "No Google tokens found in cookies. User has not linked Google account."
+      );
+      return NextResponse.json(
+        {
+          error: "Google account not linked",
+          message: "Please link your Google account to view your subscriptions",
+        },
+        { status: 403 }
+      );
     }
 
-    const tokens = JSON.parse(tokensCookie);
+    // Parse the tokens
+    let tokens;
+    try {
+      tokens = JSON.parse(tokensCookie);
+    } catch (e) {
+      console.error("Failed to parse Google tokens:", e);
+      return NextResponse.json(
+        {
+          error: "Invalid Google tokens",
+          message:
+            "Your Google session has expired. Please re-link your account.",
+        },
+        { status: 401 }
+      );
+    }
 
     // Initialize the OAuth2 client
     const oauth2Client = new google.auth.OAuth2(
@@ -48,10 +73,29 @@ export async function GET() {
     }));
 
     return NextResponse.json(channels);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching YouTube subscriptions:", error);
+
+    // Check if this is an auth error
+    if (
+      error.message?.includes("invalid_grant") ||
+      error.message?.includes("token")
+    ) {
+      return NextResponse.json(
+        {
+          error: "Authentication failed",
+          message:
+            "Your Google session has expired. Please re-link your account.",
+        },
+        { status: 401 }
+      );
+    }
+
     return NextResponse.json(
-      { error: "Failed to fetch subscriptions" },
+      {
+        error: "Failed to fetch subscriptions",
+        message: "An error occurred while fetching your YouTube subscriptions.",
+      },
       { status: 500 }
     );
   }

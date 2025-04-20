@@ -1,117 +1,247 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import {
+  useGoogleAuth,
+  GoogleAuthStatus,
+} from "./providers/google-auth-provider";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { toast } from "sonner";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { Loader2 } from "lucide-react";
 
+// Define the schema for our form
+const formSchema = z.object({
+  channel: z.string({
+    required_error: "Please select a channel to import.",
+  }),
+  enableNotifications: z.boolean().default(true).optional(),
+});
+
+// Define our channel type
 interface Channel {
   id: string;
   title: string;
-  thumbnailUrl: string;
-  subscriberCount: number;
+  thumbnail: string;
 }
 
-interface ErrorResponse {
-  error: string;
-  message: string;
-}
+// Main component
+export default function YouTubeSubscriptions() {
+  const {
+    status: googleAuthStatus,
+    linkGoogleAccount,
+    refreshTokens,
+    isLoading: googleAuthLoading,
+  } = useGoogleAuth();
 
-export function YouTubeSubscriptions() {
   const [channels, setChannels] = useState<Channel[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isLoadingChannels, setIsLoadingChannels] = useState(false);
+  const [submitLoading, setSubmitLoading] = useState(false);
 
+  // Initialize form
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      channel: "",
+      enableNotifications: true,
+    },
+  });
+
+  // Load YouTube subscriptions when authenticated
   useEffect(() => {
-    async function fetchSubscriptions() {
-      try {
-        console.log("Fetching YouTube subscriptions...");
-        const response = await fetch("/api/channels");
+    const fetchYouTubeSubscriptions = async () => {
+      if (googleAuthStatus === "linked") {
+        try {
+          setIsLoadingChannels(true);
+          const response = await fetch("/api/youtube/subscriptions", {
+            credentials: "include",
+          });
 
-        if (!response.ok) {
-          const data = (await response.json()) as ErrorResponse;
-          console.error("Error fetching subscriptions:", data);
+          if (!response.ok) {
+            if (response.status === 401) {
+              // Token expired, try to refresh
+              refreshTokens();
+              return;
+            }
 
-          setError(data.error || "Failed to fetch subscriptions");
-          setErrorMessage(data.message || "Please try again later");
-
-          // Don't show a generic error for expected conditions like Google not being linked
-          if (data.error === "Google account not linked") {
-            setError(null);
+            throw new Error(
+              `Failed to fetch subscriptions: ${response.statusText}`
+            );
           }
 
-          return;
+          const data = await response.json();
+          setChannels(data.items || []);
+        } catch (error) {
+          console.error("Error fetching YouTube subscriptions:", error);
+          toast.error("Failed to load YouTube subscriptions", {
+            description:
+              error instanceof Error ? error.message : "Please try again later",
+            action: {
+              label: "Try again",
+              onClick: () => fetchYouTubeSubscriptions(),
+            },
+          });
+        } finally {
+          setIsLoadingChannels(false);
         }
-
-        const data = await response.json();
-        console.log("Received subscriptions:", data);
-        setChannels(data);
-      } catch (err) {
-        console.error("Error in fetchSubscriptions:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to fetch subscriptions"
-        );
-      } finally {
-        setLoading(false);
       }
+    };
+
+    fetchYouTubeSubscriptions();
+  }, [googleAuthStatus, refreshTokens]);
+
+  // Handle form submission
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    try {
+      setSubmitLoading(true);
+
+      // Submit selected channel to backend
+      const response = await fetch("/api/youtube/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          channelId: values.channel,
+          enableNotifications: values.enableNotifications,
+        }),
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to subscribe: ${response.statusText}`);
+      }
+
+      // Show success message
+      toast.success("Channel added successfully", {
+        description: "You will now receive updates from this channel",
+      });
+
+      // Reset form
+      form.reset();
+    } catch (error) {
+      console.error("Error subscribing to channel:", error);
+      toast.error("Failed to add channel", {
+        description:
+          error instanceof Error ? error.message : "Please try again later",
+      });
+    } finally {
+      setSubmitLoading(false);
     }
-
-    fetchSubscriptions();
-  }, []);
-
-  if (loading) {
-    return <div className="text-center">Loading subscriptions...</div>;
   }
 
-  if (error) {
-    return (
-      <div className="text-center text-red-500">
-        <p>Error: {error}</p>
-        {errorMessage && <p className="text-sm mt-2">{errorMessage}</p>}
-      </div>
-    );
-  }
+  // Render different content based on authentication status
+  const renderContent = () => {
+    switch (googleAuthStatus) {
+      case "unknown":
+        return (
+          <div className="flex flex-col items-center justify-center p-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+            <p>Checking YouTube connection status...</p>
+          </div>
+        );
 
-  // If we have no subscriptions because Google isn't linked
-  if (
-    channels.length === 0 &&
-    errorMessage?.includes("link your Google account")
-  ) {
-    return (
-      <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-center">
-        <p className="text-blue-800 mb-2">
-          {errorMessage ||
-            "Please link your Google account to see your YouTube subscriptions"}
-        </p>
-        <button
-          onClick={() =>
-            (window.location.href = "/api/auth/google?linkAccount=true")
-          }
-          className="mt-2 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-        >
-          Link Google Account
-        </button>
-      </div>
-    );
-  }
+      case "not-linked":
+        return (
+          <div className="flex flex-col items-center justify-center p-4">
+            <p className="mb-4">
+              Connect your YouTube account to import subscriptions
+            </p>
+            <Button onClick={linkGoogleAccount} disabled={googleAuthLoading}>
+              {googleAuthLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                "Connect YouTube"
+              )}
+            </Button>
+          </div>
+        );
 
-  if (channels.length === 0) {
-    return <div className="text-center">No subscriptions found</div>;
-  }
+      case "expired":
+        return (
+          <div className="flex flex-col items-center justify-center p-4">
+            <p className="mb-4">
+              Your YouTube connection has expired. Please reconnect.
+            </p>
+            <Button onClick={refreshTokens} disabled={googleAuthLoading}>
+              {googleAuthLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Reconnecting...
+                </>
+              ) : (
+                "Reconnect YouTube"
+              )}
+            </Button>
+          </div>
+        );
+
+      case "linked":
+        return (
+          <div>
+            <h3 className="text-lg font-medium mb-4">Your YouTube Channels</h3>
+            {isLoadingChannels ? (
+              <div className="flex items-center justify-center p-4">
+                <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                <p>Loading your YouTube subscriptions...</p>
+              </div>
+            ) : channels.length > 0 ? (
+              <ul className="space-y-2">
+                {channels.map((channel) => (
+                  <li
+                    key={channel.id}
+                    className="p-2 border rounded flex items-center"
+                  >
+                    {channel.thumbnail && (
+                      <img
+                        src={channel.thumbnail}
+                        alt={channel.title}
+                        className="w-8 h-8 rounded-full mr-2"
+                      />
+                    )}
+                    <span>{channel.title}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No YouTube subscriptions found.</p>
+            )}
+          </div>
+        );
+    }
+  };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {channels.map((channel) => (
-        <div key={channel.id} className="border rounded-lg p-4">
-          <img
-            src={channel.thumbnailUrl}
-            alt={channel.title}
-            className="w-16 h-16 rounded-full mx-auto mb-2"
-          />
-          <h3 className="text-lg font-semibold text-center">{channel.title}</h3>
-          <p className="text-sm text-gray-500 text-center">
-            {channel.subscriberCount.toLocaleString()} subscribers
-          </p>
-        </div>
-      ))}
-    </div>
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle>YouTube Subscriptions</CardTitle>
+        <CardDescription>
+          Import channels from your YouTube subscriptions
+        </CardDescription>
+      </CardHeader>
+      <CardContent>{renderContent()}</CardContent>
+    </Card>
   );
 }

@@ -2,33 +2,56 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { YouTubeSubscriptions } from "@/components/youtube-subscriptions";
+import YouTubeSubscriptions from "@/components/youtube-subscriptions";
+import {
+  useGoogleAuth,
+  updateGoogleAuthInfo,
+} from "@/components/providers/google-auth-provider";
+
+// Use the backend URL from environment variables or Next.js config
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8888";
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<{
+    id: string;
     email: string;
+    username: string;
     hasGoogleAuth?: boolean;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const {
+    status: googleAuthStatus,
+    linkGoogleAccount,
+    isLoading: isGoogleAuthLoading,
+    refreshTokens,
+  } = useGoogleAuth();
   const router = useRouter();
 
+  // Check authentication status on initial load and when Google auth changes
   useEffect(() => {
     async function checkAuth() {
       try {
+        setLoading(true);
         // Check for tokens
         const authSuccess = document.cookie.includes("auth_success=true");
         const hasJwt = document.cookie.includes("token=");
         const hasAuthToken = document.cookie.includes("auth_token=");
+        const hasGoogleTokens = document.cookie.includes("google_tokens=");
 
         // Debug logging
         console.log("Cookies:", document.cookie);
         console.log("Has JWT token:", hasJwt);
         console.log("Has auth_token:", hasAuthToken);
+        console.log("Has Google tokens:", hasGoogleTokens);
+        console.log("Google auth status:", googleAuthStatus);
 
         if (hasJwt || hasAuthToken) {
-          // Try to get user info
-          const response = await fetch("/api/users/me");
+          // Try to get user info from the backend through the API proxy
+          const response = await fetch(`/api/users/me`, {
+            credentials: "include", // Send cookies with the request
+          });
           console.log("/api/users/me response status:", response.status);
 
           if (response.ok) {
@@ -36,6 +59,19 @@ export default function Home() {
             console.log("User data:", userData);
             setUser(userData);
             setIsAuthenticated(true);
+
+            // Update Google Auth status based on user profile
+            if (userData.hasGoogleAuth !== undefined) {
+              updateGoogleAuthInfo(userData.hasGoogleAuth);
+              console.log(
+                "Updated Google Auth status from user profile. hasGoogleAuth:",
+                userData.hasGoogleAuth
+              );
+            } else if (hasGoogleTokens) {
+              // If user profile doesn't have Google auth info but we have tokens, use that
+              updateGoogleAuthInfo(true);
+              console.log("Updated Google Auth status from cookies: linked");
+            }
           } else {
             const errorData = await response.json().catch(() => ({}));
             console.error("Auth error:", errorData);
@@ -56,7 +92,7 @@ export default function Home() {
     }
 
     checkAuth();
-  }, []);
+  }, [googleAuthStatus]); // Re-run when Google auth status changes
 
   const handleSignOut = async () => {
     try {
@@ -75,7 +111,9 @@ export default function Home() {
       console.log("Signing out, clearing cookies client-side");
 
       // Also clear cookies server-side via the logout API
-      await fetch("/api/auth/logout");
+      await fetch(`/api/auth/logout`, {
+        credentials: "include",
+      });
 
       console.log("Logout API called, reloading page");
 
@@ -89,11 +127,46 @@ export default function Home() {
   };
 
   const handleLinkGoogle = () => {
-    // Add a state param to indicate we're linking accounts
-    window.location.href = "/api/auth/google?linkAccount=true";
+    // Use the GoogleAuthProvider's function instead of direct navigation
+    linkGoogleAccount();
   };
 
-  if (loading) {
+  const handleRefreshTokens = () => {
+    refreshTokens();
+  };
+
+  // Determine if we should show the Google link button
+  // Show it if:
+  // 1. User is authenticated AND
+  // 2. Google auth loading is complete AND
+  // 3. Either:
+  //    a. User has no Google auth in their profile, OR
+  //    b. Google auth status is "not-linked" or "expired"
+  const showGoogleLinkButton =
+    isAuthenticated &&
+    !isGoogleAuthLoading &&
+    (googleAuthStatus === "not-linked" ||
+      googleAuthStatus === "expired" ||
+      !user?.hasGoogleAuth);
+
+  // Always log the current state to help debug
+  useEffect(() => {
+    console.log("Current state:", {
+      isAuthenticated,
+      googleAuthStatus,
+      isGoogleAuthLoading,
+      hasGoogleAuth: user?.hasGoogleAuth,
+      showGoogleLinkButton,
+    });
+  }, [
+    isAuthenticated,
+    googleAuthStatus,
+    isGoogleAuthLoading,
+    user,
+    showGoogleLinkButton,
+  ]);
+
+  if (loading || isGoogleAuthLoading) {
     return (
       <div className="min-h-screen p-4 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
@@ -111,9 +184,13 @@ export default function Home() {
               {user ? `Signed in as ${user.email}` : "You are signed in!"}
             </p>
             <div className="flex gap-2">
-              {user && !user.hasGoogleAuth && (
+              {showGoogleLinkButton && (
                 <button
-                  onClick={handleLinkGoogle}
+                  onClick={
+                    googleAuthStatus === "expired"
+                      ? handleRefreshTokens
+                      : handleLinkGoogle
+                  }
                   className="flex items-center gap-1 text-white bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded text-sm"
                 >
                   <svg
@@ -139,7 +216,9 @@ export default function Home() {
                       fill="#ffffff"
                     />
                   </svg>
-                  Link Google Account
+                  {googleAuthStatus === "expired"
+                    ? "Refresh Google Authorization"
+                    : "Link Google Account"}
                 </button>
               )}
               <button

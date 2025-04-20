@@ -45,12 +45,40 @@ export async function GET(request: Request) {
       return NextResponse.redirect(fullUrl);
     };
 
-    // Check if we're linking an account
-    const isLinkingAccount = state === "link_account";
+    // Parse the state parameter to extract actions and other data
+    let stateData = { action: "login" };
+    try {
+      if (state) {
+        // State could be a simple string or JSON
+        if (state === "link_account") {
+          stateData.action = "link_account";
+        } else if (state === "refresh_tokens") {
+          stateData.action = "refresh_tokens";
+        } else {
+          // Try to parse as JSON
+          try {
+            stateData = JSON.parse(state);
+          } catch (e) {
+            // Not JSON, use as is
+            stateData = { action: state };
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to parse state parameter:", e);
+    }
+
+    const isLinkingAccount = stateData.action === "link_account";
+    const isRefreshingTokens = stateData.action === "refresh_tokens";
+
+    console.log("Auth action:", stateData.action);
 
     // Handle errors
     if (error) {
       console.error("OAuth error:", error);
+      if (isRefreshingTokens) {
+        return redirectTo("/autoclose?error=refresh_failed");
+      }
       return redirectTo(
         isLinkingAccount ? "/" : "/login?error=google_auth_failed"
       );
@@ -58,6 +86,9 @@ export async function GET(request: Request) {
 
     if (!code) {
       console.error("No code received");
+      if (isRefreshingTokens) {
+        return redirectTo("/autoclose?error=refresh_failed");
+      }
       return redirectTo(
         isLinkingAccount ? "/" : "/login?error=no_code_received"
       );
@@ -87,6 +118,32 @@ export async function GET(request: Request) {
       }
 
       const { sub: googleId, email, name, picture } = payload;
+
+      // Handle token refresh scenario - just set tokens and redirect to autoclose
+      if (isRefreshingTokens) {
+        console.log("Refreshing tokens, skipping verification");
+        // Create response with refreshed Google cookies
+        const redirectResponse = NextResponse.redirect(
+          `${baseUrl}/autoclose?success=true`
+        );
+
+        // Store Google tokens in a single cookie as JSON
+        const googleTokensJson = JSON.stringify({
+          ...tokens,
+          // Add the current timestamp + expiry for easier checking
+          acquired_at: Date.now(),
+          expiry_date: Date.now() + (tokens.expiry_date || 3600 * 1000),
+        });
+
+        redirectResponse.cookies.set("google_tokens", googleTokensJson, {
+          secure: process.env.NODE_ENV === "production",
+          httpOnly: true,
+          path: "/",
+          maxAge: 30 * 24 * 60 * 60, // 30 days
+        });
+
+        return redirectResponse;
+      }
 
       // If we're linking an account, we need to check for a JWT token
       if (isLinkingAccount) {
@@ -127,7 +184,13 @@ export async function GET(request: Request) {
           const redirectResponse = redirectTo(redirectUrl.toString());
 
           // Store Google tokens in a single cookie as JSON
-          const googleTokensJson = JSON.stringify(tokens);
+          const googleTokensJson = JSON.stringify({
+            ...tokens,
+            // Add the current timestamp + expiry for easier checking
+            acquired_at: Date.now(),
+            expiry_date: Date.now() + (tokens.expiry_date || 3600 * 1000),
+          });
+
           redirectResponse.cookies.set("google_tokens", googleTokensJson, {
             secure: process.env.NODE_ENV === "production",
             httpOnly: true,
@@ -202,14 +265,20 @@ export async function GET(request: Request) {
           return redirectTo("/login?error=google_login_failed");
         }
 
-        const { token, user } = await loginResponse.json();
+        const { token } = await loginResponse.json();
 
         // Create response with cookies
         const redirectUrl = new URL("/", baseUrl);
         const redirectResponse = redirectTo(redirectUrl.toString());
 
         // Store the Google tokens as a JSON string
-        const googleTokensJson = JSON.stringify(tokens);
+        const googleTokensJson = JSON.stringify({
+          ...tokens,
+          // Add the current timestamp + expiry for easier checking
+          acquired_at: Date.now(),
+          expiry_date: Date.now() + (tokens.expiry_date || 3600 * 1000),
+        });
+
         redirectResponse.cookies.set("google_tokens", googleTokensJson, {
           secure: process.env.NODE_ENV === "production",
           httpOnly: true,

@@ -40,7 +40,8 @@ package-lock.json
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Netlify
-/.netlify/
+.netlify/
+**/.netlify/
 /.netlify/functions/
 /netlify.toml
 

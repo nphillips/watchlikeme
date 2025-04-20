@@ -73,6 +73,13 @@ export async function GET(request: Request) {
     try {
       // Exchange code for tokens
       const { tokens } = await updatedOauth2Client.getToken(code);
+
+      // Ensure the tokens have an expiry_date for our refresh logic
+      const tokenData = tokens as any;
+      if (tokenData.expiry_date === undefined && tokenData.expires_in) {
+        tokenData.expiry_date = Date.now() + tokenData.expires_in * 1000;
+      }
+
       updatedOauth2Client.setCredentials(tokens);
 
       const ticket = await updatedOauth2Client.verifyIdToken({
@@ -127,7 +134,16 @@ export async function GET(request: Request) {
           const redirectResponse = redirectTo(redirectUrl.toString());
 
           // Store Google tokens in a single cookie as JSON
-          const googleTokensJson = JSON.stringify(tokens);
+          const tokensWithExpiry = { ...tokens } as any;
+          if (
+            tokensWithExpiry.expiry_date === undefined &&
+            tokensWithExpiry.expires_in
+          ) {
+            tokensWithExpiry.expiry_date =
+              Date.now() + tokensWithExpiry.expires_in * 1000;
+          }
+
+          const googleTokensJson = JSON.stringify(tokensWithExpiry);
           redirectResponse.cookies.set("google_tokens", googleTokensJson, {
             secure: process.env.NODE_ENV === "production",
             httpOnly: true,
@@ -209,7 +225,16 @@ export async function GET(request: Request) {
         const redirectResponse = redirectTo(redirectUrl.toString());
 
         // Store the Google tokens as a JSON string
-        const googleTokensJson = JSON.stringify(tokens);
+        const tokensWithExpiry = { ...tokens } as any;
+        if (
+          tokensWithExpiry.expiry_date === undefined &&
+          tokensWithExpiry.expires_in
+        ) {
+          tokensWithExpiry.expiry_date =
+            Date.now() + tokensWithExpiry.expires_in * 1000;
+        }
+
+        const googleTokensJson = JSON.stringify(tokensWithExpiry);
         redirectResponse.cookies.set("google_tokens", googleTokensJson, {
           secure: process.env.NODE_ENV === "production",
           httpOnly: true,

@@ -72,9 +72,30 @@ export async function POST(request: Request) {
       { status: 200 }
     );
 
+    // Log token setting
+    console.log("Setting token cookie for user:", user.id);
+
     response.cookies.set("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+    });
+
+    // Also set a non-httpOnly version of the token for debugging
+    response.cookies.set("auth_token", token, {
+      httpOnly: false,
+      secure: false,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+    });
+
+    // Also set a non-httpOnly cookie for debugging
+    response.cookies.set("auth_debug", "true", {
+      httpOnly: false,
+      secure: false,
       sameSite: "lax",
       path: "/",
       maxAge: 7 * 24 * 60 * 60, // 7 days

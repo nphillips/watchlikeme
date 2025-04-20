@@ -1,19 +1,14 @@
 import { NextResponse } from "next/server";
 import { google } from "googleapis";
-import { cookies } from "next/headers";
+import { getAuthenticatedClient } from "@/lib/google-auth";
 
 export async function GET() {
   try {
-    // Get the tokens from the cookie
-    const cookieStore = await cookies();
-    const tokensCookie = cookieStore.get("google_tokens")?.value;
+    // Get authenticated client with fresh tokens
+    const oauth2Client = await getAuthenticatedClient();
 
-    console.log("Google tokens cookie exists:", !!tokensCookie);
-
-    if (!tokensCookie) {
-      console.log(
-        "No Google tokens found in cookies. User has not linked Google account."
-      );
+    if (!oauth2Client) {
+      console.log("No authenticated Google client available");
       return NextResponse.json(
         {
           error: "Google account not linked",
@@ -22,32 +17,6 @@ export async function GET() {
         { status: 403 }
       );
     }
-
-    // Parse the tokens
-    let tokens;
-    try {
-      tokens = JSON.parse(tokensCookie);
-    } catch (e) {
-      console.error("Failed to parse Google tokens:", e);
-      return NextResponse.json(
-        {
-          error: "Invalid Google tokens",
-          message:
-            "Your Google session has expired. Please re-link your account.",
-        },
-        { status: 401 }
-      );
-    }
-
-    // Initialize the OAuth2 client
-    const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      `${process.env.ORIGIN}/api/auth/google/callback`
-    );
-
-    // Set the credentials
-    oauth2Client.setCredentials(tokens);
 
     // Initialize the YouTube API client
     const youtube = google.youtube("v3");

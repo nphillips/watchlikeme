@@ -1,39 +1,18 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { google } from "googleapis";
-import { env } from "@/env";
-
-const oauth2Client = new google.auth.OAuth2(
-  env.GOOGLE_CLIENT_ID,
-  env.GOOGLE_CLIENT_SECRET,
-  `${env.ORIGIN || "http://localhost:3000"}/api/auth/google/callback`
-);
+import { getAuthenticatedClient } from "@/lib/google-auth";
 
 export async function GET() {
   try {
-    let googleTokensCookie;
+    // Get authenticated client with fresh tokens
+    const oauth2Client = await getAuthenticatedClient();
 
-    try {
-      // Access cookies in a try-catch to handle potential errors
-      googleTokensCookie = cookies().get("google_tokens");
-    } catch (e) {
-      console.error("Error accessing cookies:", e);
+    if (!oauth2Client) {
       return NextResponse.json(
-        { message: "Error accessing cookie store" },
-        { status: 500 }
-      );
-    }
-
-    if (!googleTokensCookie) {
-      return NextResponse.json(
-        { message: "No Google tokens found" },
+        { message: "No Google tokens found or tokens could not be refreshed" },
         { status: 401 }
       );
     }
-
-    // Parse the tokens from the cookie
-    const tokens = JSON.parse(googleTokensCookie.value);
-    oauth2Client.setCredentials(tokens);
 
     // Get user profile data
     const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });

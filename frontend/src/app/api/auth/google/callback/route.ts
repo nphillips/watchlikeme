@@ -48,18 +48,20 @@ export async function GET(request: Request) {
     // Check if we're linking an account
     const isLinkingAccount = state === "link_account";
 
-    // Handle errors
+    // Handle errors - redirect to home with error message instead of login
     if (error) {
       console.error("OAuth error:", error);
       return redirectTo(
-        isLinkingAccount ? "/" : "/login?error=google_auth_failed"
+        isLinkingAccount ? "/" : `/?error=${encodeURIComponent(error)}`
       );
     }
 
     if (!code) {
       console.error("No code received");
       return redirectTo(
-        isLinkingAccount ? "/" : "/login?error=no_code_received"
+        isLinkingAccount
+          ? "/"
+          : `/?error=${encodeURIComponent("no_code_received")}`
       );
     }
 
@@ -109,18 +111,22 @@ export async function GET(request: Request) {
         console.log("Using backend URL for account linking:", backendUrl);
 
         try {
-          // Call backend to link the account
-          const response = await fetch(`${backendUrl}/api/auth/link-google`, {
+          // Send request to link account
+          const linkResult = await fetch(`${backendUrl}/api/auth/link-google`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ googleId, googleEmail: email }),
+            body: JSON.stringify({
+              googleId: googleId,
+              googleEmail: email,
+              googleTokens: tokens,
+            }),
           });
 
-          if (!response.ok) {
-            const errorData = await response.json();
+          if (!linkResult.ok) {
+            const errorData = await linkResult.json();
             console.error("Failed to link account:", errorData);
             return redirectTo(
               `/?error=${encodeURIComponent(
@@ -179,52 +185,12 @@ export async function GET(request: Request) {
 
         const userData = await checkUserResponse.json();
 
-        // If user doesn't exist, create them
-        if (!checkUserResponse.ok || !userData.exists) {
-          // Create user
-          const createUserResponse = await fetch(`${backendUrl}/api/users`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              email,
-              name,
-              googleId,
-              username: email?.split("@")[0] || `user_${Date.now()}`,
-            }),
-          });
-
-          if (!createUserResponse.ok) {
-            console.error("Failed to create user");
-            return redirectTo("/login?error=user_creation_failed");
-          }
-        }
-
-        // Login with Google ID
-        const loginResponse = await fetch(
-          `${backendUrl}/api/auth/google-login`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ googleId }),
-          }
+        // Create response with Google tokens cookie
+        const redirectResponse = NextResponse.redirect(
+          new URL(userData.exists ? "/" : "/register?fromGoogle=true", baseUrl)
         );
 
-        if (!loginResponse.ok) {
-          console.error("Failed to login with Google");
-          return redirectTo("/login?error=google_login_failed");
-        }
-
-        const { token, user } = await loginResponse.json();
-
-        // Create response with cookies
-        const redirectUrl = new URL("/", baseUrl);
-        const redirectResponse = redirectTo(redirectUrl.toString());
-
-        // Store the Google tokens as a JSON string
+        // Store Google tokens and set auth_success cookie
         const tokensWithExpiry = { ...tokens } as any;
         if (
           tokensWithExpiry.expiry_date === undefined &&
@@ -242,39 +208,29 @@ export async function GET(request: Request) {
           maxAge: 30 * 24 * 60 * 60, // 30 days
         });
 
-        // Set cookies
-        redirectResponse.cookies.set("token", token, {
+        // Set auth_success cookie
+        redirectResponse.cookies.set("auth_success", "true", {
           secure: process.env.NODE_ENV === "production",
           httpOnly: true,
           path: "/",
-          maxAge: 7 * 24 * 60 * 60, // 7 days
+          maxAge: 5 * 60, // 5 minutes, just enough to complete registration
         });
 
-        redirectResponse.cookies.set("auth_success", "true", {
-          secure: process.env.NODE_ENV === "production",
-          path: "/",
-          maxAge: 30, // 30 seconds, just to show a success message
-        });
-
-        // Return response with cookies
         return redirectResponse;
-      } catch (authFlowError) {
-        console.error("Auth flow error:", authFlowError);
+      } catch (error) {
+        console.error("Error in normal auth flow:", error);
         return redirectTo(
-          `/login?error=${encodeURIComponent("auth_flow_error")}`
+          `/?error=${encodeURIComponent("authentication_failed")}`
         );
       }
-    } catch (oauthError) {
-      console.error("OAuth token exchange error:", oauthError);
+    } catch (error) {
+      console.error("Token exchange error:", error);
       return redirectTo(
-        `/login?error=${encodeURIComponent("google_auth_token_error")}`
+        `/?error=${encodeURIComponent("token_exchange_failed")}`
       );
     }
   } catch (error) {
-    console.error("Google callback error:", error);
-    // Use our helper function for the final error redirect
-    const baseUrl = env.ORIGIN || "http://localhost:3000";
-    const redirectUrl = new URL("/login?error=google_auth_error", baseUrl);
-    return NextResponse.redirect(redirectUrl);
+    console.error("Callback error:", error);
+    return redirectTo(`/?error=${encodeURIComponent("authentication_failed")}`);
   }
 }

@@ -1,40 +1,51 @@
 import { NextResponse } from "next/server";
-import { google } from "googleapis";
-import { getAuthenticatedClient } from "@/lib/google-auth";
+import { cookies } from "next/headers";
 
 export async function GET() {
   try {
-    // Get authenticated client with fresh tokens
-    const oauth2Client = await getAuthenticatedClient();
+    const cookieStore = await cookies();
+    const googleTokensCookie = cookieStore.get("google_tokens");
 
-    if (!oauth2Client) {
+    if (!googleTokensCookie) {
       return NextResponse.json(
-        { message: "No Google tokens found or tokens could not be refreshed" },
+        { error: "No Google tokens found" },
         { status: 401 }
       );
     }
 
-    // Get user profile data
-    const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
-    const { data } = await oauth2.userinfo.get();
+    // Parse the Google tokens from the cookie
+    const tokens = JSON.parse(decodeURIComponent(googleTokensCookie.value));
 
-    if (!data.email) {
+    // Use the access token to fetch the user's profile from Google
+    const response = await fetch(
+      "https://www.googleapis.com/oauth2/v2/userinfo",
+      {
+        headers: {
+          Authorization: `Bearer ${tokens.access_token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
       return NextResponse.json(
-        { message: "Failed to retrieve email from Google profile" },
-        { status: 400 }
+        { error: "Failed to fetch Google profile" },
+        { status: response.status }
       );
     }
 
-    // Return the profile data
-    return NextResponse.json({
-      email: data.email,
-      name: data.name || "",
-      picture: data.picture || "",
+    const profile = await response.json();
+
+    // Create the response with the profile data
+    const nextResponse = NextResponse.json({
+      email: profile.email,
+      name: profile.name,
     });
+
+    return nextResponse;
   } catch (error) {
     console.error("Error fetching Google profile:", error);
     return NextResponse.json(
-      { message: "Failed to fetch Google profile" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

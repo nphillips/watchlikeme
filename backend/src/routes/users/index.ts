@@ -3,6 +3,7 @@ import { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 import jwt from "jsonwebtoken";
 import { env } from "../../env";
 import { PrismaClient } from "@prisma/client";
+import { authenticateToken } from "../../middleware/auth";
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -69,6 +70,35 @@ router.post("/", async (req, res) => {
 
 router.get("/", (req, res) => {
   res.json({ message: "Admin users list endpoint" });
+});
+
+// Endpoint to get Google tokens for a user
+router.get("/:userId/google-tokens", authenticateToken, async (req, res) => {
+  try {
+    // Ensure the user is requesting their own tokens
+    if (req.user?.id !== req.params.userId) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const userId = req.params.userId;
+
+    // Retrieve the user's Google tokens from storage
+    // Note: In a real implementation, these should be encrypted in the database
+    const googleTokens = await prisma.googleToken.findUnique({
+      where: { userId },
+      select: { tokens: true },
+    });
+
+    if (!googleTokens) {
+      return res.status(404).json({ error: "Google tokens not found" });
+    }
+
+    // Return the tokens
+    res.json({ tokens: googleTokens.tokens });
+  } catch (error) {
+    console.error("Error retrieving Google tokens:", error);
+    res.status(500).json({ error: "Failed to retrieve Google tokens" });
+  }
 });
 
 const handler: Handler = async (

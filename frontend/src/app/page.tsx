@@ -42,8 +42,10 @@ export default function Home() {
             setIsAuthenticated(false);
           }
         } else if (authSuccess) {
-          // Only Google OAuth is authenticated, but no WatchLikeMe account
-          setIsAuthenticated(true);
+          // User has only authenticated with Google but doesn't have a WatchLikeMe account
+          // Redirect them to registration with a parameter indicating they're coming from Google
+          router.push("/register?fromGoogle=true");
+          return;
         } else {
           setIsAuthenticated(false);
         }
@@ -56,7 +58,7 @@ export default function Home() {
     }
 
     checkAuth();
-  }, []);
+  }, [router]);
 
   const handleSignOut = async () => {
     try {

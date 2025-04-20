@@ -42,7 +42,7 @@ const verifyToken = (
 // Link Google account to existing user
 router.post("/link-google", verifyToken, async (req, res) => {
   try {
-    const { googleId, googleEmail } = req.body;
+    const { googleId, googleEmail, googleTokens } = req.body;
     const userId = req.user.id;
 
     if (!googleId) {
@@ -74,6 +74,32 @@ router.post("/link-google", verifyToken, async (req, res) => {
         role: true,
       },
     });
+
+    // Store Google tokens if provided
+    if (googleTokens) {
+      try {
+        // Convert tokens to string if it's not already
+        const tokensString =
+          typeof googleTokens === "string"
+            ? googleTokens
+            : JSON.stringify(googleTokens);
+
+        // Upsert Google tokens
+        await prisma.googleToken.upsert({
+          where: { userId },
+          update: { tokens: tokensString },
+          create: {
+            userId,
+            tokens: tokensString,
+          },
+        });
+
+        console.log(`Google tokens saved for user ${userId}`);
+      } catch (tokenError) {
+        console.error("Error saving Google tokens:", tokenError);
+        // Continue despite token save error
+      }
+    }
 
     return res.json({
       message: "Google account linked successfully",

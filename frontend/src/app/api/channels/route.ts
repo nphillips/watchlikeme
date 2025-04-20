@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { google } from "googleapis";
 import { getAuthenticatedClient } from "@/lib/google-auth";
+import { backendFetch } from "@/lib/backend-fetch";
 
 export async function GET() {
   try {
@@ -18,10 +19,31 @@ export async function GET() {
       );
     }
 
-    // Initialize the YouTube API client
+    // First try to get channels from our backend (which caches in the database)
+    try {
+      const response = await backendFetch("/channels");
+
+      if (response.ok) {
+        const channels = await response.json();
+        console.log(
+          `Retrieved ${channels.length} channels from database cache`
+        );
+        return NextResponse.json(channels);
+      } else {
+        console.error(
+          "Error fetching from backend:",
+          await response.text().catch(() => "")
+        );
+      }
+    } catch (backendError) {
+      console.error("Error fetching from backend:", backendError);
+      // Fall back to direct YouTube API call
+    }
+
+    // Initialize the YouTube API client as fallback
     const youtube = google.youtube("v3");
 
-    // Fetch subscriptions
+    // Fetch subscriptions directly from YouTube API
     const response = await youtube.subscriptions.list({
       auth: oauth2Client,
       part: ["snippet"],
@@ -45,18 +67,19 @@ export async function GET() {
   } catch (error: any) {
     console.error("Error fetching YouTube subscriptions:", error);
 
-    // Check if this is an auth error
+    // Check if this is a token-related error
     if (
       error.message?.includes("invalid_grant") ||
-      error.message?.includes("token")
+      error.message?.includes("token") ||
+      error.message?.includes("Token has been expired or revoked")
     ) {
       return NextResponse.json(
         {
-          error: "Authentication failed",
+          error: "Google authentication failed",
           message:
             "Your Google session has expired. Please re-link your account.",
         },
-        { status: 401 }
+        { status: 403 }
       );
     }
 

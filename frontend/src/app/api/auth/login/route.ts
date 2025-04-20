@@ -101,6 +101,41 @@ export async function POST(request: Request) {
       maxAge: 7 * 24 * 60 * 60, // 7 days
     });
 
+    // If user has Google auth, retrieve their Google tokens
+    if (user.hasGoogleAuth) {
+      try {
+        // Fetch Google tokens from backend
+        const tokensResponse = await fetch(
+          `${env.BACKEND_URL}/api/users/${user.id}/google-tokens`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (tokensResponse.ok) {
+          const { tokens } = await tokensResponse.json();
+
+          if (tokens) {
+            // Save the Google tokens in a cookie
+            response.cookies.set("google_tokens", tokens, {
+              httpOnly: true,
+              secure: process.env.NODE_ENV === "production",
+              sameSite: "lax",
+              path: "/",
+              maxAge: 30 * 24 * 60 * 60, // 30 days
+            });
+
+            console.log("Restored Google tokens for linked account");
+          }
+        }
+      } catch (tokenError) {
+        console.error("Error retrieving Google tokens:", tokenError);
+        // Continue without Google tokens, user can re-link if needed
+      }
+    }
+
     return response;
   } catch (error) {
     console.error("Login error:", error);

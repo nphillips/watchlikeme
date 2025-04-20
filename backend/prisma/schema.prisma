@@ -28,6 +28,8 @@ model User {
   subscriptions  Channel[]    @relation("UserSubscriptions")
   // Named collections
   collections    Collection[]
+  // Google tokens
+  googleToken    GoogleToken?
   createdAt      DateTime     @default(now())
 }
 
@@ -36,6 +38,7 @@ model Channel {
   youtubeId       String     @unique
   title           String
   thumbnail       String?
+  thumbnailUpdatedAt DateTime? // Track when thumbnail was last updated
   subscriberCount Int?
   // Who subscribes
   subscribers     User[]     @relation("UserSubscriptions")
@@ -44,6 +47,7 @@ model Channel {
   // Collections this channel is in
   collectionItems CollectionItem[]
   createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 }
 
 model Video {
@@ -90,4 +94,14 @@ model CollectionItem {
   video          Video?      @relation(fields: [videoId], references: [id])
   videoId        String?
   createdAt      DateTime    @default(now())
+}
+
+// Store Google tokens for authenticated users
+model GoogleToken {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @unique
+  tokens    String   // JSON string of tokens (access_token, refresh_token, etc.)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

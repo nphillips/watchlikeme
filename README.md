@@ -1,3 +1,70 @@
+# WatchLikeMe
+
+A platform for discovering and sharing YouTube content.
+
+## Project Structure
+
+This is a monorepo structure with frontend and backend code in separate directories:
+
+```
+watchlikeme/
+├── frontend/       # Next.js application
+├── backend/        # Express.js API server
+└── .env            # Shared environment variables
+```
+
+### Environment Configuration
+
+**IMPORTANT**: There should only be one `.env` file at the root of the monorepo. Both frontend and backend packages use dotenv to load environment variables from this root file.
+
+```
+DATABASE_URL=           # PostgreSQL connection string
+GOOGLE_CLIENT_ID=       # Google OAuth client ID
+GOOGLE_CLIENT_SECRET=   # Google OAuth client secret
+JWT_SECRET=             # Secret for JWT tokens
+YOUTUBE_API_KEY=        # YouTube Data API key
+ORIGIN=                 # Frontend URL (e.g., http://localhost:3000)
+BACKEND_URL=            # Backend URL (e.g., http://localhost:8888)
+NEXT_PUBLIC_BACKEND_URL= # Frontend access to backend URL
+NEXT_PUBLIC_SITE_URL=   # Public site URL
+```
+
+### API Path Structure
+
+The backend API is structured with routes mounted at the following paths:
+
+- `/api/auth/*` - Authentication routes
+- `/api/users/*` - User management routes
+- `/api/channels/*` - YouTube channel routes
+
+When accessing these routes from the frontend, always use the full path with the `/api` prefix.
+
+Frontend fetch examples:
+
+```javascript
+// Correct
+fetch(`${env.BACKEND_URL}/api/users/me`);
+
+// Incorrect - missing /api prefix
+fetch(`${env.BACKEND_URL}/users/me`);
+```
+
+## Development
+
+Start the backend:
+
+```
+cd backend
+npm run dev
+```
+
+Start the frontend:
+
+```
+cd frontend
+npm run dev
+```
+
 # WatchLikeMe — MVP Requirements (April 2025)
 
 ## Core Value Proposition

@@ -153,9 +153,6 @@ export default function Home() {
             </div>
           </div>
           <div className="mt-8">
-            <h2 className="text-xl font-semibold mb-4">
-              Your YouTube Subscriptions
-            </h2>
             <YouTubeSubscriptions />
           </div>
         </div>

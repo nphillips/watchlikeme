@@ -1,43 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import {
+  FaceIcon,
+  ImageIcon,
+  SunIcon,
+  ChevronDownIcon,
+} from "@radix-ui/react-icons";
+
 import { cn } from "@/lib/utils";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 interface ChannelItemProps {
   id: string;
   title: string;
-  thumbnailUrl: string;
-  subscriberCount: number;
   children?: React.ReactNode;
 }
 
-export function ChannelItem({
-  id,
-  title,
-  thumbnailUrl,
-  subscriberCount,
-  children,
-}: ChannelItemProps) {
-  const [isSelected, setIsSelected] = useState(false);
-
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setIsSelected(e.target.checked);
-  };
-
+export function ChannelItem({ id, title, children }: ChannelItemProps) {
   return (
-    <div className={cn("border rounded-lg p-4", isSelected && "bg-gray-100")}>
-      <input
-        type="checkbox"
-        id={id}
-        checked={isSelected}
-        onChange={handleCheckboxChange}
-      />
-      <label htmlFor={id}>
-        <div className="font-semibold text-center truncate" title={title}>
-          {title}
+    <Accordion type="multiple">
+      <AccordionItem value={id}>
+        <div className={cn("flex items-start px-4 gap-2")}>
+          <div className="flex-1 flex">
+            <AccordionTrigger className="p-0 gap-1 text-lg font-semibold [&_svg]:w-6 [&_svg]:h-6">
+              {title}
+            </AccordionTrigger>
+          </div>
         </div>
-      </label>
-      <div>{children}</div>
-    </div>
+
+        <AccordionContent className="px-4 pb-4 pt-0">
+          {children}
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 }

@@ -198,18 +198,12 @@ export function YouTubeSubscriptions() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Your YouTube Subscriptions</h2>
+        <h2 className="text-xl font-semibold">Subscriptions</h2>
         <RefreshSubscriptionsButton />
       </div>
-      <div>
+      <div className="flex flex-col gap-4">
         {channels.map((channel) => (
-          <ChannelItem
-            key={channel.id}
-            id={channel.id}
-            title={channel.title}
-            thumbnailUrl={channel.thumbnailUrl}
-            subscriberCount={channel.subscriberCount}
-          >
+          <ChannelItem key={channel.id} id={channel.id} title={channel.title}>
             <div>{/* Corresponding youtube videos here */}</div>
           </ChannelItem>
         ))}

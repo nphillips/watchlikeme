@@ -42,6 +42,11 @@ export async function GET() {
         {
           headers: {
             Authorization: `Bearer ${token}`,
+            // Forward all cookies to the backend so it can read google_tokens
+            cookie: cookieStore
+              .getAll()
+              .map((cookie) => `${cookie.name}=${cookie.value}`)
+              .join("; "),
           },
         }
       );

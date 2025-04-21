@@ -1,12 +1,18 @@
 import { NextResponse } from "next/server";
 import { google } from "googleapis";
-import { getAuthenticatedClient } from "@/lib/google-auth";
+import { getAuthenticatedClient } from "@/lib/google-client";
 import { backendFetch } from "@/lib/backend-fetch";
 
-export async function GET() {
+console.log(
+  "Using getAuthenticatedClient from:",
+  require.resolve("@/lib/google-client")
+);
+
+export async function GET(request: Request) {
+  console.log("Channel route incoming cookies:", request.headers.get("cookie"));
   try {
     // Get authenticated client with fresh tokens
-    const oauth2Client = await getAuthenticatedClient();
+    const oauth2Client = await getAuthenticatedClient(request);
 
     if (!oauth2Client) {
       console.log("No authenticated Google client available");
@@ -21,7 +27,12 @@ export async function GET() {
 
     // First try to get channels from our backend (which caches in the database)
     try {
-      const response = await backendFetch("/channels");
+      const response = await backendFetch("/channels", {
+        headers: {
+          // Forward the user's cookies to the backend
+          cookie: request.headers.get("cookie") || "",
+        },
+      });
 
       if (response.ok) {
         const channels = await response.json();

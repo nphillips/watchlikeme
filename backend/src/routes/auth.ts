@@ -2,16 +2,13 @@ import express from "express";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { getGoogleTokensForUser } from "../db";
 
 const prisma = new PrismaClient();
 const router = express.Router();
 
 // Middleware to verify JWT token
-const verifyToken = (
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction
-) => {
+export const verifyToken: express.RequestHandler = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -78,19 +75,26 @@ router.post("/link-google", verifyToken, async (req, res) => {
     // Store Google tokens if provided
     if (googleTokens) {
       try {
-        // Convert tokens to string if it's not already
-        const tokensString =
+        // Parse tokens object
+        const parsedTokens =
           typeof googleTokens === "string"
-            ? googleTokens
-            : JSON.stringify(googleTokens);
+            ? JSON.parse(googleTokens)
+            : googleTokens;
+        const { access_token, refresh_token, expiry_date } = parsedTokens;
 
-        // Upsert Google tokens
+        // Upsert Google tokens into structured columns
         await prisma.googleToken.upsert({
           where: { userId },
-          update: { tokens: tokensString },
+          update: {
+            accessToken: access_token!,
+            refreshToken: refresh_token!,
+            expiryDate: new Date(expiry_date!),
+          },
           create: {
             userId,
-            tokens: tokensString,
+            accessToken: access_token!,
+            refreshToken: refresh_token!,
+            expiryDate: new Date(expiry_date!),
           },
         });
 
@@ -108,6 +112,41 @@ router.post("/link-google", verifyToken, async (req, res) => {
   } catch (error) {
     console.error("Error linking Google account:", error);
     return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// GET /api/auth/me/google-tokens
+router.get("/me/google-tokens", verifyToken, async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const tokens = await getGoogleTokensForUser(userId);
+    if (!tokens) {
+      return res.status(404).json({ error: "No Google tokens found" });
+    }
+    return res.json({
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+      expiry_date: tokens.expiry_date,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+// Alias GET /api/users/me/google-tokens
+router.get("/users/me/google-tokens", verifyToken, async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const tokens = await getGoogleTokensForUser(userId);
+    if (!tokens) {
+      return res.status(404).json({ error: "No Google tokens found" });
+    }
+    return res.json({
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+      expiry_date: tokens.expiry_date,
+    });
+  } catch (err) {
+    next(err);
   }
 });
 

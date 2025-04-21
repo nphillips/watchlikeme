@@ -98,10 +98,12 @@ model CollectionItem {
 
 // Store Google tokens for authenticated users
 model GoogleToken {
-  id        String   @id @default(uuid())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String   @unique
-  tokens    String   // JSON string of tokens (access_token, refresh_token, etc.)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(uuid())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String   @unique
+  accessToken    String
+  refreshToken   String
+  expiryDate     DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }

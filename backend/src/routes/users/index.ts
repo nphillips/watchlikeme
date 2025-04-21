@@ -83,10 +83,13 @@ router.get("/:userId/google-tokens", authenticateToken, async (req, res) => {
     const userId = req.params.userId;
 
     // Retrieve the user's Google tokens from storage
-    // Note: In a real implementation, these should be encrypted in the database
     const googleTokens = await prisma.googleToken.findUnique({
       where: { userId },
-      select: { tokens: true },
+      select: {
+        accessToken: true,
+        refreshToken: true,
+        expiryDate: true,
+      },
     });
 
     if (!googleTokens) {
@@ -94,7 +97,11 @@ router.get("/:userId/google-tokens", authenticateToken, async (req, res) => {
     }
 
     // Return the tokens
-    res.json({ tokens: googleTokens.tokens });
+    res.json({
+      accessToken: googleTokens.accessToken,
+      refreshToken: googleTokens.refreshToken,
+      expiryDate: googleTokens.expiryDate,
+    });
   } catch (error) {
     console.error("Error retrieving Google tokens:", error);
     res.status(500).json({ error: "Failed to retrieve Google tokens" });

@@ -12,6 +12,7 @@ import router from "./routes";
 import authRoutes from "./routes/auth";
 import usersRoutes from "./routes/users";
 import { env } from "./env";
+import { getGoogleTokensForUser } from "./db";
 
 // User type definition for TypeScript since we can't import it directly from Prisma
 type User = {
@@ -151,6 +152,23 @@ app.get("/api/users/me", async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id: payload.sub } });
     return res.json(user);
   } catch {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+});
+
+// Fetch stored Google tokens for the authenticated user
+app.get("/api/users/me/google-tokens", async (req, res) => {
+  const token = req.cookies.token || "";
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
+      sub: string;
+    };
+    const tokens = await getGoogleTokensForUser(payload.sub);
+    if (!tokens) {
+      return res.status(404).json({ error: "No Google tokens found" });
+    }
+    return res.json(tokens);
+  } catch (err) {
     return res.status(401).json({ error: "Not authenticated" });
   }
 });

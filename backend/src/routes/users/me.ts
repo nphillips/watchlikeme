@@ -1,21 +1,26 @@
 import express from "express";
-import { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
+import { verifyToken } from "../auth";
+import { getGoogleTokensForUser } from "../../db";
 
 const router = express.Router();
 
-router.get("/me", (req, res) => {
-  res.json({ message: "Current user info endpoint" });
+router.get("/me", verifyToken, (req, res) => {
+  res.json({ id: req.user.id });
 });
 
-const handler: Handler = async (
-  event: HandlerEvent,
-  context: HandlerContext
-) => {
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ message: "Current user info endpoint" }),
-  };
-};
+// GET /api/users/me/google-tokens
+router.get("/me/google-tokens", verifyToken, async (req, res, next) => {
+  try {
+    const tokens = await getGoogleTokensForUser(req.user.id);
+    if (!tokens) {
+      return res.status(404).json({ error: "No Google tokens found" });
+    }
+    res.json(tokens);
+  } catch (err) {
+    next(err);
+  }
+});
+
+console.log("→ google‑tokens fetch status:", resp.status, await resp.text());
 
 export default router;
-export { handler };

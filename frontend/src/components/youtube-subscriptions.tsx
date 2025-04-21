@@ -201,7 +201,7 @@ export function YouTubeSubscriptions() {
         <h2 className="text-xl font-semibold">Your YouTube Subscriptions</h2>
         <RefreshSubscriptionsButton />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div>
         {channels.map((channel) => (
           <ChannelItem
             key={channel.id}
@@ -209,7 +209,9 @@ export function YouTubeSubscriptions() {
             title={channel.title}
             thumbnailUrl={channel.thumbnailUrl}
             subscriberCount={channel.subscriberCount}
-          />
+          >
+            <div>{/* Corresponding youtube videos here */}</div>
+          </ChannelItem>
         ))}
       </div>
     </div>

@@ -6,7 +6,6 @@ import { prisma } from "../lib/prisma";
 
 const router = Router();
 
-// Define the User interface to match what's expected from the middleware
 interface User {
   id: string;
   email: string;
@@ -19,7 +18,6 @@ declare module "express" {
   }
 }
 
-// Get user's subscribed channels
 router.get("/", authenticateToken, async (req: Request, res: Response) => {
   try {
     const accessToken = req.user?.accessToken;
@@ -121,12 +119,10 @@ router.get("/", authenticateToken, async (req: Request, res: Response) => {
   }
 });
 
-// Get liked videos
 router.get("/liked", (req, res) => {
   res.json({ message: "Liked videos endpoint" });
 });
 
-// Refresh channel details
 router.post(
   "/refresh",
   authenticateToken,

@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction, RequestHandler } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../env";
 
@@ -14,10 +14,10 @@ declare module "express" {
   }
 }
 
-export const authenticateToken = (
-  req: Request,
-  res: Response,
-  next: NextFunction
+export const authenticateToken: RequestHandler<{}, any, {}, { user?: User }> = (
+  req,
+  res,
+  next
 ) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];

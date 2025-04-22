@@ -1,9 +1,8 @@
 import express, { Request, Response, Router } from "express";
-import { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
-import { authenticateToken } from "../../middleware/auth";
-import { setUserCredentials } from "../../lib/youtube";
-import { updateSubscriptionDetails } from "../../lib/youtube-utils";
-import { prisma } from "../../lib/prisma";
+import { authenticateToken } from "../middleware/auth";
+import { setUserCredentials } from "../lib/youtube";
+import { updateSubscriptionDetails } from "../lib/youtube-utils";
+import { prisma } from "../lib/prisma";
 
 const router = Router();
 
@@ -20,9 +19,9 @@ declare module "express" {
   }
 }
 
+// Get user's subscribed channels
 router.get("/", authenticateToken, async (req: Request, res: Response) => {
   try {
-    // Get the user's access token from the request
     const accessToken = req.user?.accessToken;
     const userId = req.user?.id;
 
@@ -36,10 +35,8 @@ router.get("/", authenticateToken, async (req: Request, res: Response) => {
       tokenLength: accessToken.length,
     });
 
-    // Get YouTube client with user's credentials
     const youtube = setUserCredentials(accessToken);
 
-    // Fetch the user's subscribed channels
     console.log("Fetching subscriptions from YouTube API...");
     const response = await youtube.subscriptions.list({
       part: ["snippet"],
@@ -58,23 +55,19 @@ router.get("/", authenticateToken, async (req: Request, res: Response) => {
       return res.json([]);
     }
 
-    // Format the channels data
     const channels = response.data.items.map((item) => ({
       youtubeId: item.snippet?.resourceId?.channelId,
       title: item.snippet?.title,
       thumbnail: item.snippet?.thumbnails?.default?.url,
-      subscriberCount: 0, // This would require an additional API call to get
+      subscriberCount: 0,
     }));
 
     console.log(`Processing ${channels.length} channels`);
 
-    // Save channels to database
     if (userId) {
       for (const channelData of channels) {
-        // Skip if missing required data
         if (!channelData.youtubeId || !channelData.title) continue;
 
-        // First, find or create the channel record
         const channel = await prisma.channel.upsert({
           where: { youtubeId: channelData.youtubeId },
           update: {
@@ -90,7 +83,6 @@ router.get("/", authenticateToken, async (req: Request, res: Response) => {
           },
         });
 
-        // Then, ensure the user is subscribed to this channel
         await prisma.user.update({
           where: { id: userId },
           data: {
@@ -108,7 +100,6 @@ router.get("/", authenticateToken, async (req: Request, res: Response) => {
       console.log("No user ID found in request, skipping database mirroring");
     }
 
-    // Return the formatted channel data
     const formattedChannels = channels.map((channel) => ({
       id: channel.youtubeId,
       title: channel.title,
@@ -130,6 +121,12 @@ router.get("/", authenticateToken, async (req: Request, res: Response) => {
   }
 });
 
+// Get liked videos
+router.get("/liked", (req, res) => {
+  res.json({ message: "Liked videos endpoint" });
+});
+
+// Refresh channel details
 router.post(
   "/refresh",
   authenticateToken,
@@ -142,10 +139,8 @@ router.post(
         return res.status(401).json({ error: "Authentication required" });
       }
 
-      // Update channel details, including subscriber counts
       const result = await updateSubscriptionDetails(userId, accessToken);
 
-      // Return success with count of updated channels
       res.json({
         success: true,
         message: `Updated ${result.updated} channels`,
@@ -164,15 +159,4 @@ router.post(
   }
 );
 
-const handler: Handler = async (
-  event: HandlerEvent,
-  context: HandlerContext
-) => {
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ message: "Channels list endpoint" }),
-  };
-};
-
 export default router;
-export { handler };

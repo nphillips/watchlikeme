@@ -18,8 +18,7 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import { Search } from "lucide-react";
-import { ChannelItem } from "./channel-item";
-
+import { CpItem } from "./CpItem";
 interface Channel {
   id: string;
   title: string;
@@ -99,9 +98,9 @@ export function CommandPalette() {
 
             {query === "" && (
               <CommandGroup heading="Your Subscriptions">
-                {subs?.slice(0, 5).map((ch) => (
+                {subs?.slice(0, 10).map((ch) => (
                   <CommandItem key={ch.id} onSelect={() => addItem(ch)}>
-                    <ChannelItem
+                    <CpItem
                       id={ch.id}
                       title={ch.title}
                       thumbnailUrl={ch.thumbnailUrl}
@@ -114,7 +113,7 @@ export function CommandPalette() {
                       >
                         +Add
                       </Button>
-                    </ChannelItem>
+                    </CpItem>
                   </CommandItem>
                 ))}
               </CommandGroup>

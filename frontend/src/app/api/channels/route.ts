@@ -10,6 +10,40 @@ console.log(
 
 export async function GET(request: Request) {
   console.log("Channel route incoming cookies:", request.headers.get("cookie"));
+
+  // If there's a search query, proxy to backend /channels/search
+  const url = new URL(request.url);
+  const q = url.searchParams.get("q");
+  if (q) {
+    try {
+      const response = await backendFetch(
+        `/channels/search?q=${encodeURIComponent(q)}&type=channel,video`,
+        {
+          headers: { cookie: request.headers.get("cookie") || "" },
+        }
+      );
+      if (response.ok) {
+        const results = await response.json();
+        return NextResponse.json(results);
+      } else {
+        console.error(
+          "Error fetching search from backend:",
+          await response.text().catch(() => "")
+        );
+        return NextResponse.json(
+          { error: "Search failed" },
+          { status: response.status }
+        );
+      }
+    } catch (err) {
+      console.error("Error proxying search:", err);
+      return NextResponse.json(
+        { error: "Search proxy failed" },
+        { status: 500 }
+      );
+    }
+  }
+
   try {
     // Get authenticated client with fresh tokens
     const oauth2Client = await getAuthenticatedClient(request);

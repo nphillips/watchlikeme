@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { YouTubeSubscriptions } from "@/components/youtube-subscriptions";
+import { CommandPalette } from "@/components/CommandPalette";
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -106,6 +107,7 @@ export default function Home() {
   return (
     <div className="min-h-screen p-4">
       <h1 className="text-2xl font-bold mb-4">WatchLikeMe</h1>
+      <CommandPalette />
       {isAuthenticated ? (
         <div className="space-y-4">
           <div className="flex justify-between items-center">

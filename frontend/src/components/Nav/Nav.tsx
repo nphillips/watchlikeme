@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { useRouter } from "next/navigation";
+import { hasCookie, removeCookie } from "@/lib/cookies";
 
 const Nav = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -14,13 +15,12 @@ const Nav = () => {
   useEffect(() => {
     async function checkAuth() {
       try {
-        // Check for tokens
-        const authSuccess = document.cookie.includes("auth_success=true");
-        const hasJwt = document.cookie.includes("token=");
-        const hasAuthToken = document.cookie.includes("auth_token=");
+        // Check for tokens using the cookie utility
+        const authSuccess = hasCookie("auth_success");
+        const hasJwt = hasCookie("token");
+        const hasAuthToken = hasCookie("auth_token");
 
         // Debug logging
-        console.log("Cookies:", document.cookie);
         console.log("Has JWT token:", hasJwt);
         console.log("Has auth_token:", hasAuthToken);
 
@@ -60,17 +60,12 @@ const Nav = () => {
 
   const handleSignOut = async () => {
     try {
-      // Clear cookies client-side
-      document.cookie =
-        "google_tokens=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; max-age=0";
-      document.cookie =
-        "auth_success=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; max-age=0";
-      document.cookie =
-        "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; max-age=0";
-      document.cookie =
-        "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; max-age=0";
-      document.cookie =
-        "auth_debug=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; max-age=0";
+      // Clear cookies using the utility
+      removeCookie("google_tokens");
+      removeCookie("auth_success");
+      removeCookie("token");
+      removeCookie("auth_token");
+      removeCookie("auth_debug");
 
       console.log("Signing out, clearing cookies client-side");
 

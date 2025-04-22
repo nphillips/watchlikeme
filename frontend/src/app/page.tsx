@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { YouTubeSubscriptions } from "@/components/youtube-subscriptions";
 import { CommandPalette } from "@/components/CommandPalette";
 import Nav from "@/components/Nav";
+import { hasCookie } from "@/lib/cookies";
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -18,13 +19,12 @@ export default function Home() {
   useEffect(() => {
     async function checkAuth() {
       try {
-        // Check for tokens
-        const authSuccess = document.cookie.includes("auth_success=true");
-        const hasJwt = document.cookie.includes("token=");
-        const hasAuthToken = document.cookie.includes("auth_token=");
+        // Check for tokens using the cookie utility
+        const authSuccess = hasCookie("auth_success");
+        const hasJwt = hasCookie("token");
+        const hasAuthToken = hasCookie("auth_token");
 
         // Debug logging
-        console.log("Cookies:", document.cookie);
         console.log("Has JWT token:", hasJwt);
         console.log("Has auth_token:", hasAuthToken);
 

@@ -1,8 +1,8 @@
 import express from "express";
-import { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 
 const router = express.Router();
 
+// Collection CRUD operations
 router.get("/", (req, res) => {
   res.json({ message: "Collections list endpoint" });
 });
@@ -23,15 +23,22 @@ router.delete("/:id", (req, res) => {
   res.json({ message: "Collection deletion endpoint" });
 });
 
-const handler: Handler = async (
-  event: HandlerEvent,
-  context: HandlerContext
-) => {
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ message: "Collections endpoint" }),
-  };
-};
+// Public collection routes
+router.get("/:userSlug/:collectionSlug", (req, res) => {
+  res.json({ message: "Public collection endpoint" });
+});
+
+// Collection items operations
+router.get("/:collectionId/items", (req, res) => {
+  res.json({ message: "Collection items list endpoint" });
+});
+
+router.post("/:collectionId/items", (req, res) => {
+  res.json({ message: "Collection item creation endpoint" });
+});
+
+router.delete("/:collectionId/items/:itemId", (req, res) => {
+  res.json({ message: "Collection item deletion endpoint" });
+});
 
 export default router;
-export { handler };

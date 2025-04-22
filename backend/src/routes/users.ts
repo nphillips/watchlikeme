@@ -1,9 +1,81 @@
 import express from "express";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { env } from "../env";
+import { verifyToken } from "./auth";
+import { getGoogleTokensForUser } from "../db";
 
 const prisma = new PrismaClient();
 const router = express.Router();
+
+// User profile and token management
+router.get("/me", verifyToken, (req, res) => {
+  res.json({ id: req.user.id });
+});
+
+router.get("/me/google-tokens", verifyToken, async (req, res, next) => {
+  try {
+    const tokens = await getGoogleTokensForUser(req.user.id);
+    if (!tokens) {
+      return res.status(404).json({ error: "No Google tokens found" });
+    }
+    res.json(tokens);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Google OAuth user management
+router.post("/oauth", async (req, res) => {
+  try {
+    const { email, name, googleId, accessToken } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    if (!accessToken) {
+      return res.status(400).json({ error: "Access token is required" });
+    }
+
+    // Generate a username from email if not provided
+    const username = email.split("@")[0];
+
+    // Upsert user in database
+    const user = await prisma.user.upsert({
+      where: { email },
+      update: {
+        name: name || undefined,
+        googleId: googleId || undefined,
+      },
+      create: {
+        email,
+        name: name || undefined,
+        username,
+        googleId: googleId || undefined,
+      },
+    });
+
+    // Create JWT token
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+        accessToken,
+      },
+      env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    return res.json({ token, user });
+  } catch (error) {
+    console.error("Error in OAuth user management:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
 
 // Check if a user exists by email
 router.post("/check", async (req, res) => {
@@ -42,7 +114,7 @@ router.post("/by-email", async (req, res) => {
         email: true,
         username: true,
         googleId: true,
-        password: true, // Just checking if it exists, not returning the value
+        password: true,
         role: true,
       },
     });
@@ -51,10 +123,9 @@ router.post("/by-email", async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Don't send the password hash to the client
     return res.json({
       ...user,
-      password: user.password ? true : false, // Just indicate if password exists
+      password: user.password ? true : false,
     });
   } catch (error) {
     console.error("Error fetching user by email:", error);
@@ -89,15 +160,16 @@ router.patch("/:id", async (req, res) => {
     const { id } = req.params;
     const { username, password, googleId, name, image } = req.body;
 
-    // Build update data
     const updateData: any = {};
     if (username) updateData.username = username;
-    if (password) updateData.password = password;
+    if (password) {
+      // Hash new password if provided
+      updateData.password = await bcrypt.hash(password, 10);
+    }
     if (googleId) updateData.googleId = googleId;
     if (name) updateData.name = name;
     if (image) updateData.image = image;
 
-    // Update the user
     const updatedUser = await prisma.user.update({
       where: { id },
       data: updateData,
@@ -127,7 +199,6 @@ router.post("/", async (req, res) => {
   try {
     const { username, email, password, googleId } = req.body;
 
-    // Check if email already exists
     const existingEmail = await prisma.user.findUnique({
       where: { email },
       select: { id: true },
@@ -137,7 +208,6 @@ router.post("/", async (req, res) => {
       return res.status(409).json({ message: "Email already in use" });
     }
 
-    // Check if username already exists
     const existingUsername = await prisma.user.findUnique({
       where: { username },
       select: { id: true },
@@ -147,17 +217,18 @@ router.post("/", async (req, res) => {
       return res.status(409).json({ message: "Username already in use" });
     }
 
-    // Create the user
+    // Hash password if provided
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
+
     const newUser = await prisma.user.create({
       data: {
         email,
         username,
-        password,
+        password: hashedPassword,
         googleId,
       },
     });
 
-    // Return the user without sensitive information
     return res.status(201).json({
       id: newUser.id,
       email: newUser.email,

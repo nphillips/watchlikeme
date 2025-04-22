@@ -2,7 +2,7 @@ import { Router } from "express";
 import authRoutes from "./auth";
 import userRoutes from "./users";
 import channelRoutes from "./channels";
-import collectionsRouter from "./collections/index";
+import collectionsRouter from "./collections";
 import healthRouter from "./health";
 
 const router = Router();

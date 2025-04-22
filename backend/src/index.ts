@@ -12,7 +12,7 @@ import router from "./routes";
 import authRoutes from "./routes/auth";
 import usersRoutes from "./routes/users";
 import { env } from "./env";
-import { getGoogleTokensForUser } from "./db";
+import { getGoogleTokensForUser } from "./lib/google";
 
 // User type definition for TypeScript since we can't import it directly from Prisma
 type User = {

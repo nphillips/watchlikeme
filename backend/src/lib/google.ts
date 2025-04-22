@@ -1,7 +1,4 @@
-// backend/src/db.ts
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "./prisma";
 
 /**
  * Fetches the stored Google tokens for a given user.

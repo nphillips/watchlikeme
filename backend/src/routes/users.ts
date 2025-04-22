@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { env } from "../env";
 import { verifyToken } from "./auth";
-import { getGoogleTokensForUser } from "../db";
+import { getGoogleTokensForUser } from "../lib/google";
 
 const prisma = new PrismaClient();
 const router = express.Router();

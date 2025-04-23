@@ -42,12 +42,20 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({ origin: process.env.ORIGIN, credentials: true }));
+app.use(
+  cors({
+    origin: env.ORIGIN,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
+  })
+);
 app.use(passport.initialize());
+
+// Mount routes
 app.use("/api", router);
-// Register new routes
-app.use("/api/auth", authRoutes);
-app.use("/api/users", usersRoutes);
+app.use("/api/auth", authRoutes as express.Router);
+app.use("/api/users", usersRoutes as express.Router);
 
 // Google OAuth strategy that only checks for user existence
 // The frontend will handle registration if the user doesn't exist

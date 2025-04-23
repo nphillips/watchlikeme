@@ -7,8 +7,6 @@ console.log("Initializing YouTube client with config:", {
   redirectUri: `${env.ORIGIN}/api/auth/google/callback`,
 });
 
-export const youtube = google.youtube("v3");
-
 // Initialize the OAuth2 client
 const oauth2Client = new google.auth.OAuth2(
   env.GOOGLE_CLIENT_ID,
@@ -16,12 +14,33 @@ const oauth2Client = new google.auth.OAuth2(
   `${env.ORIGIN}/api/auth/google/callback`
 );
 
-// Set the default auth to the OAuth2 client
-google.options({ auth: oauth2Client });
+// Create YouTube client
+export const youtube = google.youtube({ version: "v3", auth: oauth2Client });
 
 // Helper function to set credentials for a specific user
 export const setUserCredentials = (accessToken: string) => {
-  console.log("Setting user credentials for YouTube API");
-  oauth2Client.setCredentials({ access_token: accessToken });
-  return youtube;
+  console.log("Setting user credentials for YouTube API with token:", {
+    tokenLength: accessToken.length,
+    tokenStart: accessToken.substring(0, 10) + "...",
+  });
+
+  try {
+    oauth2Client.setCredentials({
+      access_token: accessToken,
+      token_type: "Bearer",
+    });
+
+    // Verify the credentials are set
+    const credentials = oauth2Client.credentials;
+    console.log("OAuth2 client credentials set:", {
+      hasAccessToken: !!credentials.access_token,
+      accessTokenLength: credentials.access_token?.length,
+      tokenType: credentials.token_type,
+    });
+
+    return youtube;
+  } catch (error) {
+    console.error("Error setting YouTube credentials:", error);
+    throw error;
+  }
 };

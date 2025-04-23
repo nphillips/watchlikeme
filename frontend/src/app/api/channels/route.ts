@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   if (q) {
     try {
       const response = await backendFetch(
-        `/channels/search?q=${encodeURIComponent(q)}&type=channel,video`,
+        `/api/channels/search?q=${encodeURIComponent(q)}&type=channel,video`,
         {
           headers: { cookie: request.headers.get("cookie") || "" },
         }
@@ -61,10 +61,16 @@ export async function GET(request: Request) {
 
     // First try to get channels from our backend (which caches in the database)
     try {
-      const response = await backendFetch("/channels", {
+      const cookies = request.headers.get("cookie") || "";
+      const tokenMatch = cookies.match(/token=([^;]+)/);
+      const authToken = tokenMatch ? tokenMatch[1] : null;
+
+      const response = await backendFetch("/api/channels", {
         headers: {
           // Forward the user's cookies to the backend
-          cookie: request.headers.get("cookie") || "",
+          cookie: cookies,
+          // Add Authorization header if we have a token
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
         },
       });
 

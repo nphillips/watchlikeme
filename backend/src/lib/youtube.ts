@@ -18,29 +18,35 @@ const oauth2Client = new google.auth.OAuth2(
 export const youtube = google.youtube({ version: "v3", auth: oauth2Client });
 
 // Helper function to set credentials for a specific user
-export const setUserCredentials = (accessToken: string) => {
-  console.log("Setting user credentials for YouTube API with token:", {
+export const setUserCredentials = (
+  accessToken: string,
+  refreshToken?: string
+) => {
+  console.log("[YouTube Client] Setting credentials with token:", {
     tokenLength: accessToken.length,
     tokenStart: accessToken.substring(0, 10) + "...",
+    hasRefreshToken: !!refreshToken,
   });
 
   try {
     oauth2Client.setCredentials({
       access_token: accessToken,
+      refresh_token: refreshToken,
       token_type: "Bearer",
     });
 
     // Verify the credentials are set
     const credentials = oauth2Client.credentials;
-    console.log("OAuth2 client credentials set:", {
+    console.log("[YouTube Client] Credentials set successfully:", {
       hasAccessToken: !!credentials.access_token,
       accessTokenLength: credentials.access_token?.length,
+      hasRefreshToken: !!credentials.refresh_token,
       tokenType: credentials.token_type,
     });
 
     return youtube;
   } catch (error) {
-    console.error("Error setting YouTube credentials:", error);
+    console.error("[YouTube Client] Error setting credentials:", error);
     throw error;
   }
 };

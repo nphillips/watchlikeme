@@ -7,6 +7,13 @@ import { prisma } from "../lib/prisma";
 const router = Router();
 
 router.get("/", authenticateToken, async (req: Request, res: Response) => {
+  console.log("[Channels Route] Incoming request:", {
+    path: req.path,
+    method: req.method,
+    originalUrl: req.originalUrl,
+    baseUrl: req.baseUrl,
+  });
+
   try {
     const accessToken = req.user?.accessToken;
     const userId = req.user?.id;
@@ -22,7 +29,19 @@ router.get("/", authenticateToken, async (req: Request, res: Response) => {
       return res.status(401).json({ error: "No access token found" });
     }
 
-    const youtube = setUserCredentials(accessToken);
+    const googleTokensCookie = req.cookies?.google_tokens;
+    let googleTokens;
+    try {
+      googleTokens =
+        typeof googleTokensCookie === "string"
+          ? JSON.parse(googleTokensCookie)
+          : googleTokensCookie;
+    } catch (e) {
+      console.error("[Channels Route] Error parsing Google tokens:", e);
+      return res.status(401).json({ error: "Invalid Google tokens format" });
+    }
+
+    const youtube = setUserCredentials(accessToken, googleTokens.refresh_token);
     console.log("[Channels Route] YouTube client initialized");
 
     console.log("[Channels Route] Fetching subscriptions from YouTube API...");

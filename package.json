@@ -14,10 +14,6 @@
     "dev:frontend": "yarn workspace frontend dev",
     "dev:backend": "yarn workspace backend dev"
   },
-  "devDependencies": {
-    "concurrently": "^7.0.0",
-    "netlify-cli": "^16.0.0"
-  },
   "packageManager": "yarn@4.9.1",
   "netlify": {
     "dev": {

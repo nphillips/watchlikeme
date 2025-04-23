@@ -25,10 +25,9 @@ export default function Home() {
     <div className="min-h-screen p-4">
       <Nav />
       <CommandPalette onAddItem={handleAddItem} />
-
-      <div>
-        <h3>Added items:</h3>
-        <ul>
+      <div className="mt-8">
+        <h3 className="text-lg font-bold">Collection items:</h3>
+        <ul className="list-disc pl-5">
           {addedItems.map((item, index) => (
             <li key={index}>{item.snippet?.title || item.title}</li>
           ))}

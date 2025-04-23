@@ -103,7 +103,7 @@ export function CommandPalette({ onAddItem }: CommandPaletteProps) {
             {query === "" && (
               <CommandGroup heading="Your Subscriptions">
                 {subs?.slice(0, 10).map((ch) => (
-                  <CommandItem key={ch.id} onSelect={() => addItem(ch)}>
+                  <CommandItem key={ch.id}>
                     <CpItem
                       id={ch.id}
                       title={ch.title}
@@ -138,7 +138,7 @@ export function CommandPalette({ onAddItem }: CommandPaletteProps) {
                     const thumbnail = item.snippet.thumbnails.default.url;
 
                     return (
-                      <CommandItem key={id} onSelect={() => addItem(item)}>
+                      <CommandItem key={id}>
                         <div className="flex w-full items-center justify-between">
                           <div className="flex items-center space-x-3">
                             <img

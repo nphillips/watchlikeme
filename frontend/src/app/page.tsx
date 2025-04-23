@@ -3,9 +3,15 @@
 import { CommandPalette } from "@/components/CommandPalette";
 import Nav from "@/components/Nav";
 import { useAuth } from "@/hooks/useAuth";
+import { useState } from "react";
 
 export default function Home() {
   const { loading } = useAuth();
+  const [addedItems, setAddedItems] = useState<any[]>([]);
+
+  const handleAddItem = (item: any) => {
+    setAddedItems((prev) => [...prev, item]);
+  };
 
   if (loading) {
     return (
@@ -18,7 +24,16 @@ export default function Home() {
   return (
     <div className="min-h-screen p-4">
       <Nav />
-      <CommandPalette />
+      <CommandPalette onAddItem={handleAddItem} />
+
+      <div>
+        <h3>Added items:</h3>
+        <ul>
+          {addedItems.map((item, index) => (
+            <li key={index}>{item.snippet?.title || item.title}</li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

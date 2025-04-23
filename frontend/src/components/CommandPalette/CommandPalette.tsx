@@ -19,11 +19,16 @@ import {
 } from "@/components/ui/command";
 import { Search } from "lucide-react";
 import { CpItem } from "./CpItem";
+
 interface Channel {
   id: string;
   title: string;
   thumbnailUrl: string;
   subscriberCount: number;
+}
+
+interface CommandPaletteProps {
+  onAddItem: (item: any) => void;
 }
 
 const fetcher = async (url: string) => {
@@ -35,7 +40,7 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
-export function CommandPalette() {
+export function CommandPalette({ onAddItem }: CommandPaletteProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
@@ -70,8 +75,7 @@ export function CommandPalette() {
   }, []);
 
   const addItem = (item: any) => {
-    // your add‑to‑collection logic here
-    console.log("add", item);
+    onAddItem(item);
   };
 
   return (

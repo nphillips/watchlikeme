@@ -4,6 +4,7 @@ import { CommandPalette } from "@/components/CommandPalette";
 import Nav from "@/components/Nav";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
+import { YouTubeThumbnail } from "@/components/YouTubeThumbnail";
 
 export default function Home() {
   const { loading } = useAuth();
@@ -26,10 +27,24 @@ export default function Home() {
       <Nav />
       <CommandPalette onAddItem={handleAddItem} />
       <div className="mt-8">
-        <h3 className="text-lg font-bold">Collection items:</h3>
-        <ul className="list-disc pl-5">
+        <h3 className="text-lg font-bold mb-4">Collection items:</h3>
+        <ul className="space-y-2">
           {addedItems.map((item, index) => (
-            <li key={index}>{item.snippet?.title || item.title}</li>
+            <li
+              key={index}
+              className="flex items-center gap-3 p-2 border rounded-md"
+            >
+              <YouTubeThumbnail
+                url={
+                  item.snippet?.thumbnails?.default?.url || item.thumbnailUrl
+                }
+                alt={item.snippet?.title || item.title}
+                size="sm"
+              />
+              <span className="line-clamp-1">
+                {item.snippet?.title || item.title}
+              </span>
+            </li>
           ))}
         </ul>
       </div>

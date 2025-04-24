@@ -1,35 +1,35 @@
+// src/middleware/auth.ts
+
 import { Request, Response, NextFunction, RequestHandler } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../env";
 
-interface User {
+/** Only the JWT + cookie data we care about */
+export interface AuthUser {
   id: string;
   email: string;
   accessToken: string;
 }
 
-declare module "express" {
+declare module "express-serve-static-core" {
   interface Request {
-    user?: User;
+    /** Populated by authenticateToken */
+    user?: AuthUser;
   }
 }
 
-export const authenticateToken: RequestHandler<
-  {},
-  any,
-  {},
-  { user?: User }
-> = async (req, res, next) => {
+/**
+ * Verifies the Bearer JWT, parses Google tokens from a cookie,
+ * and attaches { id, email, accessToken } to req.user.
+ */
+export const authenticateToken: RequestHandler = async (req, res, next) => {
   const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
+  const token = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : undefined;
 
-  console.log("[Auth Middleware] Starting authentication check:", {
-    hasAuthHeader: !!authHeader,
-    hasToken: !!token,
-  });
-
+  console.log("[Auth Middleware] hasHeader:", !!authHeader, "token:", !!token);
   if (!token) {
-    console.error("[Auth Middleware] No token provided");
     return res.status(401).json({ error: "No token provided" });
   }
 
@@ -38,57 +38,36 @@ export const authenticateToken: RequestHandler<
       sub: string;
       email: string;
     };
+    console.log("[Auth Middleware] JWT OK:", decoded.sub, decoded.email);
 
-    console.log("[Auth Middleware] JWT verified successfully:", {
-      userId: decoded.sub,
-      email: decoded.email,
-    });
-
-    // Parse Google tokens from cookies
-    const googleTokensCookie = req.cookies?.google_tokens;
-    console.log("[Auth Middleware] Google tokens cookie:", {
-      exists: !!googleTokensCookie,
-      type: typeof googleTokensCookie,
-    });
-
-    if (!googleTokensCookie) {
-      console.error("[Auth Middleware] No Google tokens found in cookies");
-      return res
-        .status(401)
-        .json({ error: "No Google tokens found in cookies" });
+    const cookie = req.cookies?.google_tokens;
+    if (!cookie) {
+      return res.status(401).json({ error: "Missing Google tokens cookie" });
     }
 
-    let googleTokens;
+    let googleTokens: any;
     try {
-      googleTokens =
-        typeof googleTokensCookie === "string"
-          ? JSON.parse(googleTokensCookie)
-          : googleTokensCookie;
-
-      console.log("[Auth Middleware] Parsed Google tokens:", {
-        hasAccessToken: !!googleTokens.access_token,
-        accessTokenLength: googleTokens.access_token?.length,
-      });
-    } catch (e) {
-      console.error("[Auth Middleware] Error parsing Google tokens:", e);
-      return res.status(401).json({ error: "Invalid Google tokens format" });
+      googleTokens = typeof cookie === "string" ? JSON.parse(cookie) : cookie;
+    } catch {
+      return res.status(401).json({ error: "Bad Google tokens format" });
     }
 
     if (!googleTokens.access_token) {
-      console.error("[Auth Middleware] No Google access token found");
-      return res.status(401).json({ error: "No Google access token found" });
+      return res
+        .status(401)
+        .json({ error: "Google access token not found in cookie" });
     }
 
+    // Attach our minimal AuthUser
     req.user = {
       id: decoded.sub,
       email: decoded.email,
       accessToken: googleTokens.access_token,
     };
 
-    console.log("[Auth Middleware] User object set successfully");
     next();
-  } catch (error) {
-    console.error("[Auth Middleware] Auth error:", error);
+  } catch (err) {
+    console.error("[Auth Middleware] verify error:", err);
     return res.status(403).json({ error: "Invalid token" });
   }
 };

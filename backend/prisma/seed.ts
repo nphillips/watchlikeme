@@ -95,6 +95,8 @@ async function main() {
       thumbnail:
         "https://yt3.googleusercontent.com/ytc/APkrFKaqca-rGQnQc3X7X9qZsZUMXmBZJ9Xz6K8QJ8KZ=s176-c-k-c0x00ffffff-no-rj",
       subscriberCount: 3000000,
+      userId: googleFirst.id,
+      thumbnailUpdatedAt: new Date(),
       subscribers: { connect: [{ id: googleFirst.id }, { id: hybrid.id }] },
     },
   });
@@ -106,6 +108,8 @@ async function main() {
       thumbnail:
         "https://yt3.googleusercontent.com/ytc/APkrFKYcYswt_UhD7D0j6ddiQz6Gb8Qmh9YxYVt8w=s176-c-k-c0x00ffffff-no-rj",
       subscriberCount: 15000000,
+      userId: bob.id,
+      thumbnailUpdatedAt: new Date(),
       subscribers: { connect: [{ id: bob.id }, { id: hybrid.id }] },
     },
   });
@@ -117,6 +121,8 @@ async function main() {
       thumbnail:
         "https://yt3.googleusercontent.com/ytc/APkrFKaqca-rGQnQc3X7X9qZsZUMXmBZJ9Xz6K8QJ8KZ=s176-c-k-c0x00ffffff-no-rj",
       subscriberCount: 18000000,
+      userId: hybrid.id,
+      thumbnailUpdatedAt: new Date(),
       subscribers: {
         connect: [{ id: googleFirst.id }, { id: bob.id }, { id: hybrid.id }],
       },

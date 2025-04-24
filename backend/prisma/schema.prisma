@@ -24,30 +24,48 @@ model User {
   name           String?
   image          String?
   role           Role         @default(USER)
-  // YouTube subscriptions
+
+  // YouTube channels this user has subscribed to
   subscriptions  Channel[]    @relation("UserSubscriptions")
-  // Named collections
+
+  // Channels “owned” / added by this WatchLikeMe user
+  ownedChannels  Channel[]    @relation("UserChannels")
+
+  // Named watchlists / collections
   collections    Collection[]
-  // Google tokens
+
+  // Google API tokens
   googleToken    GoogleToken?
+
   createdAt      DateTime     @default(now())
 }
 
 model Channel {
-  id              String     @id @default(uuid())
-  youtubeId       String     @unique
-  title           String
-  thumbnail       String?
-  thumbnailUpdatedAt DateTime? // Track when thumbnail was last updated
-  subscriberCount Int?
-  // Who subscribes
-  subscribers     User[]     @relation("UserSubscriptions")
-  // Optionally store videos if user picks them
-  videos          Video[]
-  // Collections this channel is in
-  collectionItems CollectionItem[]
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  id                 String           @id @default(uuid())
+  youtubeId          String
+  title              String
+  thumbnail          String?
+  thumbnailUpdatedAt DateTime?        // when we last fetched the thumbnail
+  subscriberCount    Int              @default(0)
+
+  // Users who subscribe to this channel
+  subscribers        User[]           @relation("UserSubscriptions")
+
+  // The WatchLikeMe user who “owns” this channel record
+  userId             String
+  user               User             @relation("UserChannels", fields: [userId], references: [id])
+
+  // Optional: videos you’ve bookmarked from this channel
+  videos             Video[]
+
+  // Collections this channel belongs to
+  collectionItems    CollectionItem[]
+
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  // Enforce one (youtubeId, userId) per row
+  @@unique([youtubeId, userId])
 }
 
 model Video {

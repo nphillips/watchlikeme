@@ -1,12 +1,40 @@
 import express from "express";
+import { authenticateToken } from "../middleware/auth";
+import { prisma } from "../lib/prisma";
+import { AuthenticatedUserInfo } from "../middleware/auth";
 
 const router = express.Router();
 
-// Collection CRUD operations
-router.get("/", (req, res) => {
-  res.json({ message: "Collections list endpoint" });
+// Get the authenticated user's collections
+router.get("/", authenticateToken, async (req, res) => {
+  const user = req.user as AuthenticatedUserInfo | undefined;
+
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
+  try {
+    const collections = await prisma.collection.findMany({
+      where: {
+        userId: user.id,
+      },
+      include: {
+        // Optionally include items or other details if needed upfront
+        // items: true, // Example: include items count or basic item info later?
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    res.json(collections);
+  } catch (error) {
+    console.error("Error fetching collections:", error);
+    res.status(500).json({ error: "Failed to fetch collections" });
+  }
 });
 
+// Collection CRUD operations
 router.post("/", (req, res) => {
   res.json({ message: "Collection creation endpoint" });
 });

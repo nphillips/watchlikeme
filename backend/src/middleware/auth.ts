@@ -2,7 +2,8 @@ import { Request, Response, NextFunction, RequestHandler } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../env";
 
-interface User {
+// Export the interface so it can be imported elsewhere
+export interface AuthenticatedUserInfo {
   id: string;
   email: string;
   accessToken: string;
@@ -10,7 +11,7 @@ interface User {
 
 declare module "express" {
   interface Request {
-    user?: User;
+    user?: AuthenticatedUserInfo;
   }
 }
 
@@ -18,7 +19,7 @@ export const authenticateToken: RequestHandler<
   {},
   any,
   {},
-  { user?: User }
+  { user?: AuthenticatedUserInfo }
 > = async (req, res, next) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];

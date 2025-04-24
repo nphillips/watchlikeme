@@ -1,12 +1,7 @@
 import { Request, Response, NextFunction, RequestHandler } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../env";
-
-interface User {
-  id: string;
-  email: string;
-  accessToken: string;
-}
+import { User } from "../types";
 
 declare module "express" {
   interface Request {

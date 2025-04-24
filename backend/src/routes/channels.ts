@@ -3,10 +3,11 @@ import { authenticateToken } from "../middleware/auth";
 import { setUserCredentials } from "../lib/youtube";
 import { updateSubscriptionDetails } from "../lib/youtube-utils";
 import { prisma } from "../lib/prisma";
+import { AuthRequest } from "../types";
 
 const router = Router();
 
-router.get("/", authenticateToken, async (req: Request, res: Response) => {
+router.get("/", authenticateToken, async (req: AuthRequest, res: Response) => {
   console.log("[Channels Route] Incoming request:", {
     path: req.path,
     method: req.method,
@@ -148,7 +149,7 @@ router.get("/liked", (req, res) => {
 router.post(
   "/refresh",
   authenticateToken,
-  async (req: Request, res: Response) => {
+  async (req: AuthRequest, res: Response) => {
     try {
       const accessToken = req.user?.accessToken;
       const userId = req.user?.id;

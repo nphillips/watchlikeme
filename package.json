@@ -13,7 +13,7 @@
     "dev:all": "concurrently \"yarn workspace frontend dev\" \"yarn workspace backend dev\"",
     "dev:frontend": "yarn workspace frontend dev",
     "dev:backend": "yarn workspace backend dev",
-    "clean:full": "git clean -fdx -e .env && yarn install --frozen-lockfile && npx rimraf frontend/.next && yarn workspace backend prisma generate"
+    "clean:full": "git clean -fdx -e .env && yarn install --frozen-lockfile && npx rimraf frontend/.next && yarn workspace backend prisma generate && cd frontend && ln -sf ../.env .env.local"
   },
   "packageManager": "yarn@4.9.1",
   "netlify": {

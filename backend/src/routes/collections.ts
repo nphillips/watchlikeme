@@ -1,44 +1,36 @@
 import express from "express";
+import {
+  getCollections,
+  getCollection,
+  createCollection,
+  updateCollection,
+  deleteCollection,
+  getPublicCollection,
+  getCollectionItems,
+  addCollectionItem,
+  removeCollectionItem,
+} from "../controllers/collections";
+import { authenticateToken } from "../middleware/auth";
 
 const router = express.Router();
 
 // Collection CRUD operations
-router.get("/", (req, res) => {
-  res.json({ message: "Collections list endpoint" });
-});
-
-router.post("/", (req, res) => {
-  res.json({ message: "Collection creation endpoint" });
-});
-
-router.get("/:id", (req, res) => {
-  res.json({ message: "Collection retrieval endpoint" });
-});
-
-router.patch("/:id", (req, res) => {
-  res.json({ message: "Collection update endpoint" });
-});
-
-router.delete("/:id", (req, res) => {
-  res.json({ message: "Collection deletion endpoint" });
-});
+router.get("/", authenticateToken, getCollections);
+router.post("/", authenticateToken, createCollection);
+router.get("/:id", authenticateToken, getCollection);
+router.patch("/:id", authenticateToken, updateCollection);
+router.delete("/:id", authenticateToken, deleteCollection);
 
 // Public collection routes
-router.get("/:userSlug/:collectionSlug", (req, res) => {
-  res.json({ message: "Public collection endpoint" });
-});
+router.get("/:userSlug/:collectionSlug", getPublicCollection);
 
 // Collection items operations
-router.get("/:collectionId/items", (req, res) => {
-  res.json({ message: "Collection items list endpoint" });
-});
-
-router.post("/:collectionId/items", (req, res) => {
-  res.json({ message: "Collection item creation endpoint" });
-});
-
-router.delete("/:collectionId/items/:itemId", (req, res) => {
-  res.json({ message: "Collection item deletion endpoint" });
-});
+router.get("/:collectionId/items", authenticateToken, getCollectionItems);
+router.post("/:collectionId/items", authenticateToken, addCollectionItem);
+router.delete(
+  "/:collectionId/items/:itemId",
+  authenticateToken,
+  removeCollectionItem
+);
 
 export default router;

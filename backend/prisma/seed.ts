@@ -18,20 +18,35 @@ async function main() {
   await prisma.user.deleteMany();
 
   // Hash a password for native users
-  const hashedPassword = await bcrypt.hash("password123", 10);
+  const hashedPassword = await bcrypt.hash(
+    process.env.DEFAULT_PASSWORD || "password123",
+    10
+  );
 
   // —— Create users with different authentication methods ——
 
   // 1. Google OAuth only user (no WatchLikeMe password)
-  const alice = await prisma.user.create({
+  const googleFirst = await prisma.user.create({
     data: {
-      email: "alice@example.com",
-      username: "alice",
-      googleId: "google-uid-alice",
-      name: "Alice Example",
+      email: process.env.GOOGLE_TEST_EMAIL || "test@test.com",
+      username: "google-first",
+      googleId: process.env.GOOGLE_TEST_ID || "google_oauth_id_placeholder",
+      name: "Google First User",
       image: "https://i.pravatar.cc/150?img=1",
       role: Role.USER,
-      // No password set - Google OAuth only
+    },
+  });
+
+  // Add Google tokens for googleFirst
+  await prisma.googleToken.create({
+    data: {
+      userId: googleFirst.id,
+      accessToken:
+        process.env.GOOGLE_TEST_ACCESS_TOKEN || "test_access_token_googleFirst",
+      refreshToken:
+        process.env.GOOGLE_TEST_REFRESH_TOKEN ||
+        "test_refresh_token_googleFirst",
+      expiryDate: new Date(Date.now() + 3600000), // 1 hour from now
     },
   });
 
@@ -43,106 +58,196 @@ async function main() {
       name: "Bob Example",
       image: "https://i.pravatar.cc/150?img=2",
       role: Role.USER,
-      password: hashedPassword, // WatchLikeMe password set
-      // No googleId - WatchLikeMe only
+      password: hashedPassword,
     },
   });
 
   // 3. Hybrid user (both WatchLikeMe password and Google OAuth linked)
-  const charlie = await prisma.user.create({
+  const hybrid = await prisma.user.create({
     data: {
-      email: "charlie@example.com",
-      username: "charlie",
-      googleId: "google-uid-charlie",
-      name: "Charlie Example",
+      email: process.env.GOOGLE_TEST_EMAIL_2 || "charlie@example.com",
+      username: "hybrid",
+      googleId: process.env.GOOGLE_TEST_ID_2 || "google_oauth_id_placeholder_2",
+      name: "Hybrid User",
       image: "https://i.pravatar.cc/150?img=3",
       role: Role.USER,
-      password: hashedPassword, // Has both password and Google account
+      password: hashedPassword,
     },
   });
 
-  // —— Create some channels ——
-  const channelA = await prisma.channel.create({
+  // Add Google tokens for hybrid
+  await prisma.googleToken.create({
     data: {
-      youtubeId: "UC123ABC",
-      title: "Channel A",
-      thumbnail: "https://via.placeholder.com/150",
-      subscriberCount: 1200,
-      subscribers: { connect: [{ id: alice.id }] },
+      userId: hybrid.id,
+      accessToken:
+        process.env.GOOGLE_TEST_ACCESS_TOKEN_2 || "test_access_token_hybrid",
+      refreshToken:
+        process.env.GOOGLE_TEST_REFRESH_TOKEN_2 || "test_refresh_token_hybrid",
+      expiryDate: new Date(Date.now() + 3600000), // 1 hour from now
     },
   });
 
-  const channelB = await prisma.channel.create({
+  // —— Create realistic tech channels ——
+  const verge = await prisma.channel.create({
     data: {
-      youtubeId: "UC456DEF",
-      title: "Channel B",
-      thumbnail: "https://via.placeholder.com/150",
-      subscriberCount: 800,
-      subscribers: { connect: [{ id: alice.id }, { id: bob.id }] },
+      youtubeId: "UCddiUEpeqJcYeBxFu_BnGOA",
+      title: "The Verge",
+      thumbnail:
+        "https://yt3.googleusercontent.com/ytc/APkrFKaqca-rGQnQc3X7X9qZsZUMXmBZJ9Xz6K8QJ8KZ=s176-c-k-c0x00ffffff-no-rj",
+      subscriberCount: 3000000,
+      subscribers: { connect: [{ id: googleFirst.id }, { id: hybrid.id }] },
     },
   });
 
-  // —— Create some videos ——
-  const videoA1 = await prisma.video.create({
+  const ltt = await prisma.channel.create({
     data: {
-      youtubeId: "VIDA1",
-      title: "Video A1",
-      thumbnail: "https://via.placeholder.com/150",
-      publishedAt: new Date("2025-01-01"),
-      channelId: channelA.id,
+      youtubeId: "UCXuqSBlHAE6Xw-yeJA0Tunw",
+      title: "Linus Tech Tips",
+      thumbnail:
+        "https://yt3.googleusercontent.com/ytc/APkrFKYcYswt_UhD7D0j6ddiQz6Gb8Qmh9YxYVt8w=s176-c-k-c0x00ffffff-no-rj",
+      subscriberCount: 15000000,
+      subscribers: { connect: [{ id: bob.id }, { id: hybrid.id }] },
     },
   });
 
-  const videoB1 = await prisma.video.create({
+  const mkbhd = await prisma.channel.create({
     data: {
-      youtubeId: "VIDB1",
-      title: "Video B1",
-      thumbnail: "https://via.placeholder.com/150",
-      publishedAt: new Date("2025-02-01"),
-      channelId: channelB.id,
+      youtubeId: "UCBJycsmduvYEL83R_U4JriQ",
+      title: "MKBHD",
+      thumbnail:
+        "https://yt3.googleusercontent.com/ytc/APkrFKaqca-rGQnQc3X7X9qZsZUMXmBZJ9Xz6K8QJ8KZ=s176-c-k-c0x00ffffff-no-rj",
+      subscriberCount: 18000000,
+      subscribers: {
+        connect: [{ id: googleFirst.id }, { id: bob.id }, { id: hybrid.id }],
+      },
     },
   });
 
-  // —— Create a collection for Alice ——
+  // —— Create some realistic videos ——
+  const vergeVideo = await prisma.video.create({
+    data: {
+      youtubeId: "verge2024",
+      title: "The Verge's 2024 Tech Predictions",
+      thumbnail: "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+      publishedAt: new Date("2024-01-01"),
+      channelId: verge.id,
+    },
+  });
+
+  const lttVideo = await prisma.video.create({
+    data: {
+      youtubeId: "lttgaming",
+      title: "Building the Ultimate Gaming PC",
+      thumbnail: "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+      publishedAt: new Date("2024-02-01"),
+      channelId: ltt.id,
+    },
+  });
+
+  const mkbhdVideo = await prisma.video.create({
+    data: {
+      youtubeId: "iphone15review",
+      title: "iPhone 15 Pro Review: Worth the Upgrade?",
+      thumbnail: "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+      publishedAt: new Date("2024-03-01"),
+      channelId: mkbhd.id,
+    },
+  });
+
+  // —— Create collections for googleFirst ——
   await prisma.collection.create({
     data: {
       slug: "favorites",
       name: "Favorites",
-      description: "My favorite channels & videos",
-      note: "Check out these top picks I love!",
+      description: "My favorite tech channels",
       isPublic: true,
-      userId: alice.id,
+      userId: googleFirst.id,
       items: {
-        create: [{ channelId: channelA.id }, { videoId: videoA1.id }],
+        create: [{ channelId: verge.id }, { channelId: mkbhd.id }],
       },
     },
   });
 
-  // —— Create a collection for Bob ——
   await prisma.collection.create({
     data: {
-      slug: "bob-faves",
-      name: "Bob's Faves",
-      description: "Channels Bob recommends",
-      note: "Great content from these creators.",
+      slug: "untitled",
+      name: "Untitled",
+      description: "My untitled collection",
+      isPublic: false,
+      userId: googleFirst.id,
+      items: {
+        create: [{ channelId: ltt.id }],
+      },
+    },
+  });
+
+  await prisma.collection.create({
+    data: {
+      slug: "watch-later",
+      name: "Watch Later",
+      description: "Videos to watch later",
+      isPublic: false,
+      userId: googleFirst.id,
+      items: {
+        create: [{ videoId: vergeVideo.id }, { videoId: mkbhdVideo.id }],
+      },
+    },
+  });
+
+  // —— Create collections for Bob ——
+  await prisma.collection.create({
+    data: {
+      slug: "tech-channels",
+      name: "Tech Channels",
+      description: "Great tech content creators",
       isPublic: true,
       userId: bob.id,
       items: {
-        create: [{ channelId: channelB.id }, { videoId: videoB1.id }],
+        create: [{ channelId: ltt.id }, { channelId: mkbhd.id }],
       },
     },
   });
 
-  // —— Create a collection for Charlie ——
   await prisma.collection.create({
     data: {
-      slug: "charlie-collection",
-      name: "Charlie's Mix",
-      description: "A mix of great content",
-      isPublic: true,
-      userId: charlie.id,
+      slug: "untitled",
+      name: "Untitled",
+      description: "My untitled collection",
+      isPublic: false,
+      userId: bob.id,
       items: {
-        create: [{ channelId: channelA.id }, { channelId: channelB.id }],
+        create: [{ channelId: verge.id }],
+      },
+    },
+  });
+
+  // —— Create collections for hybrid ——
+  await prisma.collection.create({
+    data: {
+      slug: "tech-mix",
+      name: "Tech Mix",
+      description: "A mix of tech content",
+      isPublic: true,
+      userId: hybrid.id,
+      items: {
+        create: [
+          { channelId: verge.id },
+          { channelId: ltt.id },
+          { channelId: mkbhd.id },
+        ],
+      },
+    },
+  });
+
+  await prisma.collection.create({
+    data: {
+      slug: "untitled",
+      name: "Untitled",
+      description: "My untitled collection",
+      isPublic: false,
+      userId: hybrid.id,
+      items: {
+        create: [{ videoId: lttVideo.id }],
       },
     },
   });

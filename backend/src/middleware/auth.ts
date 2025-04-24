@@ -21,20 +21,37 @@ export const authenticateToken: RequestHandler<
   {},
   { user?: AuthenticatedUserInfo }
 > = async (req, res, next) => {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
+  // 1. Try getting token from HttpOnly cookie first
+  let token = req.cookies?.token;
+  let tokenSource = "cookie";
+
+  // 2. If not in cookie, try Authorization header
+  if (!token) {
+    const authHeader = req.headers["authorization"];
+    const headerToken =
+      authHeader && authHeader.startsWith("Bearer ")
+        ? authHeader.split(" ")[1]
+        : null;
+    if (headerToken) {
+      token = headerToken;
+      tokenSource = "header";
+    }
+  }
 
   console.log("[Auth Middleware] Starting authentication check:", {
-    hasAuthHeader: !!authHeader,
+    tokenSource: token ? tokenSource : "none",
     hasToken: !!token,
   });
 
   if (!token) {
-    console.error("[Auth Middleware] No token provided");
+    console.error(
+      "[Auth Middleware] No token found in cookies or Authorization header"
+    );
     return res.status(401).json({ error: "No token provided" });
   }
 
   try {
+    // Proceed with JWT verification using the found token
     const decoded = jwt.verify(token, env.JWT_SECRET!) as {
       sub: string;
       email: string;
@@ -43,6 +60,7 @@ export const authenticateToken: RequestHandler<
     console.log("[Auth Middleware] JWT verified successfully:", {
       userId: decoded.sub,
       email: decoded.email,
+      tokenSource,
     });
 
     // Parse Google tokens from cookies
@@ -90,6 +108,10 @@ export const authenticateToken: RequestHandler<
     next();
   } catch (error) {
     console.error("[Auth Middleware] Auth error:", error);
-    return res.status(403).json({ error: "Invalid token" });
+    // Differentiate between bad token and other errors if needed
+    if (error instanceof jwt.JsonWebTokenError) {
+      return res.status(403).json({ error: "Invalid token" });
+    }
+    return res.status(500).json({ error: "Authentication error" });
   }
 };

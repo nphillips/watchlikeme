@@ -3,10 +3,11 @@ import { authenticateToken } from "../middleware/auth";
 import { setUserCredentials } from "../lib/youtube";
 import { updateSubscriptionDetails } from "../lib/youtube-utils";
 import { prisma } from "../lib/prisma";
+import { google } from "googleapis";
 
 const router = Router();
 
-router.get("/", authenticateToken, async (req: Request, res: Response) => {
+router.get("/", authenticateToken, async (req, res: Response) => {
   console.log("[Channels Route] Incoming request:", {
     path: req.path,
     method: req.method,
@@ -15,8 +16,20 @@ router.get("/", authenticateToken, async (req: Request, res: Response) => {
   });
 
   try {
-    const accessToken = req.user?.accessToken;
-    const userId = req.user?.id;
+    const authInfo = req.watchLikeMeAuthInfo;
+
+    if (!authInfo) {
+      console.error(
+        "[Channels Route] Authentication info missing after middleware."
+      );
+      return res
+        .status(401)
+        .json({ error: "Authentication information not found." });
+    }
+
+    const accessToken = authInfo.accessToken;
+    const userId = authInfo.id;
+    const youtubeClient = authInfo.oauth2Client;
 
     console.log("[Channels Route] Starting request with:", {
       hasAccessToken: !!accessToken,
@@ -25,24 +38,14 @@ router.get("/", authenticateToken, async (req: Request, res: Response) => {
     });
 
     if (!accessToken) {
-      console.error("[Channels Route] No access token found in request");
-      return res.status(401).json({ error: "No access token found" });
+      console.error(
+        "[Channels Route] No Google access token found in auth info"
+      );
+      return res.status(401).json({ error: "No Google access token found" });
     }
 
-    const googleTokensCookie = req.cookies?.google_tokens;
-    let googleTokens;
-    try {
-      googleTokens =
-        typeof googleTokensCookie === "string"
-          ? JSON.parse(googleTokensCookie)
-          : googleTokensCookie;
-    } catch (e) {
-      console.error("[Channels Route] Error parsing Google tokens:", e);
-      return res.status(401).json({ error: "Invalid Google tokens format" });
-    }
-
-    const youtube = setUserCredentials(accessToken, googleTokens.refresh_token);
-    console.log("[Channels Route] YouTube client initialized");
+    console.log("[Channels Route] Using OAuth2 client from middleware");
+    const youtube = google.youtube({ version: "v3", auth: youtubeClient });
 
     console.log("[Channels Route] Fetching subscriptions from YouTube API...");
     try {
@@ -126,6 +129,25 @@ router.get("/", authenticateToken, async (req: Request, res: Response) => {
         stack: youtubeError instanceof Error ? youtubeError.stack : undefined,
         name: youtubeError instanceof Error ? youtubeError.name : undefined,
       });
+      if (
+        youtubeError instanceof Error &&
+        youtubeError.message.includes("quota")
+      ) {
+        return res.status(429).json({
+          error: "YouTube API quota exceeded.",
+          details: youtubeError.message,
+        });
+      }
+      if (
+        youtubeError instanceof Error &&
+        (youtubeError.message.includes("invalid credential") ||
+          youtubeError.message.includes("invalid grant"))
+      ) {
+        return res.status(403).json({
+          error: "Google authentication failed or token expired.",
+          details: youtubeError.message,
+        });
+      }
       throw youtubeError;
     }
   } catch (error) {
@@ -145,36 +167,36 @@ router.get("/liked", (req, res) => {
   res.json({ message: "Liked videos endpoint" });
 });
 
-router.post(
-  "/refresh",
-  authenticateToken,
-  async (req: Request, res: Response) => {
-    try {
-      const accessToken = req.user?.accessToken;
-      const userId = req.user?.id;
+router.post("/refresh", authenticateToken, async (req, res: Response) => {
+  try {
+    const authInfo = req.watchLikeMeAuthInfo;
 
-      if (!accessToken || !userId) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
-      const result = await updateSubscriptionDetails(userId, accessToken);
-
-      res.json({
-        success: true,
-        message: `Updated ${result.updated} channels`,
-      });
-    } catch (error) {
-      console.error("Error refreshing channel details:", {
-        error: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
-      });
-
-      res.status(500).json({
-        error: "Failed to refresh channel details",
-        details: error instanceof Error ? error.message : "Unknown error",
-      });
+    if (!authInfo) {
+      console.error(
+        "[Refresh Route] Authentication info missing after middleware."
+      );
+      return res.status(401).json({ error: "Authentication required" });
     }
+
+    const accessToken = authInfo.accessToken;
+    const userId = authInfo.id;
+
+    const result = await updateSubscriptionDetails(userId, accessToken);
+
+    res.json({
+      success: true,
+      message: `Updated ${result.updated} channels`,
+    });
+  } catch (error) {
+    console.error("Error refreshing channel details:", {
+      error: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    res.status(500).json({
+      error: "Failed to refresh channel details",
+      details: error instanceof Error ? error.message : "Unknown error",
+    });
   }
-);
+});
 
 export default router;

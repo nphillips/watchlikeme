@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/command";
 import { Search } from "lucide-react";
 import { CpItem } from "./CpItem";
+import { YouTubeThumbnail } from "@/components/YouTubeThumbnail";
 
 interface Channel {
   id: string;
@@ -146,7 +147,7 @@ export function CommandPalette({
                       ? item.id.videoId
                       : item.id.channelId;
                     const title = item.snippet.title;
-                    const thumbnail = item.snippet.thumbnails.default.url;
+                    const thumbnail = item.snippet.thumbnails?.default?.url;
 
                     const isAdded =
                       existingItemYoutubeIds?.has(youtubeId) ?? false;
@@ -155,10 +156,10 @@ export function CommandPalette({
                       <CommandItem key={youtubeId}>
                         <div className="flex w-full items-center justify-between">
                           <div className="flex items-center space-x-3">
-                            <img
-                              src={thumbnail}
-                              alt=""
-                              className="h-10 w-10 rounded"
+                            <YouTubeThumbnail
+                              url={thumbnail}
+                              alt={title}
+                              size="md"
                             />
                             <span className="line-clamp-1">{title}</span>
                           </div>

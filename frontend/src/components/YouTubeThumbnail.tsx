@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { ImageIcon } from "@radix-ui/react-icons";
+import { cn } from "@/lib/utils";
 
 interface YouTubeThumbnailProps {
-  url: string;
+  url: string | null | undefined;
   alt: string;
   className?: string;
   size?: "sm" | "md" | "lg";
@@ -16,30 +18,65 @@ const sizeClasses = {
   lg: "h-12 w-12",
 };
 
+const fallbackImage = "/images/placeholder-image.svg";
+
 export function YouTubeThumbnail({
   url,
   alt,
   className = "",
   size = "md",
 }: YouTubeThumbnailProps) {
-  const [error, setError] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const effectiveSize = sizeClasses[size];
 
-  if (error || !url) {
-    return (
-      <div
-        className={`${sizeClasses[size]} rounded bg-gray-100 flex items-center justify-center ${className}`}
-      >
-        <ImageIcon className="h-4 w-4 text-gray-400" />
-      </div>
-    );
-  }
+  const srcUrl = imageError || !url ? fallbackImage : url;
 
   return (
-    <img
-      src={url}
-      alt={alt}
-      className={`${sizeClasses[size]} rounded object-cover ${className}`}
-      onError={() => setError(true)}
-    />
+    <div className={cn("relative rounded", effectiveSize, className)}>
+      {!isImageLoaded && !imageError && url && (
+        <div
+          className={cn(
+            "absolute inset-0 bg-gray-200 rounded animate-pulse",
+            effectiveSize
+          )}
+        />
+      )}
+
+      {(imageError || !url) && (
+        <div
+          className={cn(
+            "absolute inset-0 bg-gray-100 rounded flex items-center justify-center",
+            effectiveSize
+          )}
+        >
+          <ImageIcon className="h-4 w-4 text-gray-400" />
+        </div>
+      )}
+
+      {url && (
+        <Image
+          key={srcUrl}
+          src={srcUrl}
+          alt={alt}
+          fill
+          sizes={effectiveSize.split(" ")[1]}
+          className={cn(
+            "rounded object-cover transition-opacity duration-300",
+            isImageLoaded ? "opacity-100" : "opacity-0"
+          )}
+          onLoad={() => {
+            if (!imageError) {
+              setIsImageLoaded(true);
+            }
+          }}
+          onError={() => {
+            console.warn(`Failed to load image: ${url}`);
+            setImageError(true);
+            setIsImageLoaded(true);
+          }}
+        />
+      )}
+    </div>
   );
 }

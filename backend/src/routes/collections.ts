@@ -253,25 +253,33 @@ router.post(
           throw new Error(`Invalid itemType: ${itemType}`);
         }
 
-        // 3. Check if item already exists in the collection to prevent duplicates
+        // Check for duplicates more specifically
         const existingItem = await tx.collectionItem.findFirst({
           where: {
             collectionId: collection.id,
-            OR: [{ channelId: channelIdToAdd }, { videoId: videoIdToAdd }],
+            // Only check channelId if adding a channel, only videoId if adding a video
+            ...(itemType === "channel" &&
+              channelIdToAdd && { channelId: channelIdToAdd }),
+            ...(itemType === "video" &&
+              videoIdToAdd && { videoId: videoIdToAdd }),
+            // Ensure we don't match null IDs from the spread
+            AND: [
+              ...(itemType === "channel" ? [{ channelId: { not: null } }] : []),
+              ...(itemType === "video" ? [{ videoId: { not: null } }] : []),
+            ],
           },
         });
 
         if (existingItem) {
           console.log(
-            `[Add Item] Item (Channel: ${channelIdToAdd}, Video: ${videoIdToAdd}) already exists in collection ${collection.id}.`
+            `[Add Item] Duplicate detected: Item (Type: ${itemType}, ID: ${
+              itemType === "channel" ? channelIdToAdd : videoIdToAdd
+            }) already exists in collection ${collection.id}.`
           );
-          return tx.collectionItem.findUnique({
-            where: { id: existingItem.id },
-            include: { channel: true, video: true },
-          });
+          throw new Error("DUPLICATE_ITEM");
         }
 
-        // 4. Create the CollectionItem to link the channel/video to the collection
+        // Create new item if not a duplicate
         const createdItem = await tx.collectionItem.create({
           data: {
             collectionId: collection.id,
@@ -287,19 +295,20 @@ router.post(
         return createdItem;
       });
 
-      // 5. Return the newly created (or existing) collection item
+      // If transaction succeeded (no duplicate error thrown), return 201
       res.status(201).json(newItem);
     } catch (error) {
       console.error(
         `[Add Item] Error adding item to collection ${collectionSlug}:`,
         error
       );
-      if (error instanceof Error && error.message.includes("already exists")) {
+      // Catch the specific duplicate error
+      if (error instanceof Error && error.message === "DUPLICATE_ITEM") {
         return res
           .status(409)
           .json({ error: "Item already exists in this collection." });
       }
-      // Specific check for YouTube API errors potentially thrown
+      // Keep other specific error handlers
       if (
         error instanceof Error &&
         (error.message.includes("not found on YouTube") ||
@@ -319,6 +328,7 @@ router.post(
           details: error.message,
         });
       }
+      // General error handler
       res.status(500).json({
         error: `Failed to add item to collection`,
         details: error instanceof Error ? error.message : String(error),

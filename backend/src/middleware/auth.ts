@@ -1,26 +1,42 @@
 import { Request, Response, NextFunction, RequestHandler } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../env";
+import { google } from "googleapis"; // Import googleapis
+import { OAuth2Client } from "google-auth-library"; // Import OAuth2Client type
 
 // Export the interface so it can be imported elsewhere
 export interface AuthenticatedUserInfo {
-  id: string;
+  id: string; // WatchLikeMe User ID
   email: string;
-  accessToken: string;
+  accessToken: string; // Google Access Token
+  oauth2Client: OAuth2Client;
 }
 
-declare module "express" {
-  interface Request {
-    user?: AuthenticatedUserInfo;
+// Augment Express Request type with a unique property
+declare global {
+  namespace Express {
+    interface Request {
+      watchLikeMeAuthInfo?: AuthenticatedUserInfo;
+    }
   }
 }
 
-export const authenticateToken: RequestHandler<
-  {},
-  any,
-  {},
-  { user?: AuthenticatedUserInfo }
-> = async (req, res, next) => {
+// Helper to create an OAuth2Client
+function createOAuth2Client(tokens: any): OAuth2Client {
+  const client = new google.auth.OAuth2(
+    env.GOOGLE_CLIENT_ID,
+    env.GOOGLE_CLIENT_SECRET,
+    `${env.ORIGIN}/api/auth/google/callback` // Use origin from env
+  );
+  client.setCredentials({
+    access_token: tokens.access_token,
+    refresh_token: tokens.refresh_token, // Important for API calls
+    expiry_date: tokens.expiry_date, // Optional, but good practice
+  });
+  return client;
+}
+
+export const authenticateToken: RequestHandler = async (req, res, next) => {
   // 1. Try getting token from HttpOnly cookie first
   let token = req.cookies?.token;
   let tokenSource = "cookie";
@@ -74,7 +90,7 @@ export const authenticateToken: RequestHandler<
       console.error("[Auth Middleware] No Google tokens found in cookies");
       return res
         .status(401)
-        .json({ error: "No Google tokens found in cookies" });
+        .json({ error: "Google authentication tokens missing" });
     }
 
     let googleTokens;
@@ -87,6 +103,7 @@ export const authenticateToken: RequestHandler<
       console.log("[Auth Middleware] Parsed Google tokens:", {
         hasAccessToken: !!googleTokens.access_token,
         accessTokenLength: googleTokens.access_token?.length,
+        hasRefreshToken: !!googleTokens.refresh_token,
       });
     } catch (e) {
       console.error("[Auth Middleware] Error parsing Google tokens:", e);
@@ -98,13 +115,20 @@ export const authenticateToken: RequestHandler<
       return res.status(401).json({ error: "No Google access token found" });
     }
 
-    req.user = {
+    // Create the authenticated OAuth2 client
+    const oauth2Client = createOAuth2Client(googleTokens);
+
+    // Attach auth info to req.watchLikeMeAuthInfo
+    req.watchLikeMeAuthInfo = {
       id: decoded.sub,
       email: decoded.email,
       accessToken: googleTokens.access_token,
+      oauth2Client: oauth2Client,
     };
 
-    console.log("[Auth Middleware] User object set successfully");
+    console.log(
+      "[Auth Middleware] watchLikeMeAuthInfo object and OAuth2 client set successfully"
+    );
     next();
   } catch (error) {
     console.error("[Auth Middleware] Auth error:", error);

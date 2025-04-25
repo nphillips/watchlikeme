@@ -19,15 +19,24 @@ router.get("/", authenticateToken, async (req, res) => {
         userId: user.id,
       },
       include: {
-        // Optionally include items or other details if needed upfront
-        // items: true, // Example: include items count or basic item info later?
+        user: {
+          select: {
+            username: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
       },
     });
 
-    res.json(collections);
+    // Transform the response to include userSlug
+    const transformedCollections = collections.map((collection) => ({
+      ...collection,
+      userSlug: collection.user.username,
+    }));
+
+    res.json(transformedCollections);
   } catch (error) {
     console.error("Error fetching collections:", error);
     res.status(500).json({ error: "Failed to fetch collections" });

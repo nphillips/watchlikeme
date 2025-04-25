@@ -42,18 +42,20 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
+// Revert to single cors middleware application
 app.use(
   cors({
     origin: env.ORIGIN,
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
   })
 );
+
 app.use(passport.initialize());
 
 // Mount routes
-app.use("/api", router);
+app.use("/api", router); // This mounts collection routes too
 app.use("/api/auth", authRoutes as express.Router);
 app.use("/api/users", usersRoutes as express.Router);
 

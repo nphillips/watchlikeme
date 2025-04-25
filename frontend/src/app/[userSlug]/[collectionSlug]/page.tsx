@@ -9,6 +9,7 @@ import {
   getCollectionItems,
   addCollectionItem,
   removeCollectionItem,
+  updateCollectionNote,
 } from "@/lib/api/collections";
 import {
   PopulatedCollectionItem,
@@ -20,6 +21,18 @@ import { useParams } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 import useSWR, { mutate } from "swr";
 import { X } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 // SWR fetcher function
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -99,6 +112,21 @@ export default function CollectionPage() {
     return idSet;
   }, [items]); // Dependency is now the extracted items array
 
+  // --- State for Editing Note ---
+  const [isEditingNote, setIsEditingNote] = useState(false); // Dialog open state
+  const [editableNote, setEditableNote] = useState<string>(""); // Note content in textarea
+  const [isSavingNote, setIsSavingNote] = useState(false);
+  const [saveNoteError, setSaveNoteError] = useState<string | null>(null);
+
+  // Update editableNote when collection data loads or changes
+  useEffect(() => {
+    if (collection?.note) {
+      setEditableNote(collection.note);
+    } else {
+      setEditableNote(""); // Reset if note is null or collection is null
+    }
+  }, [collection?.note]);
+
   // Function to handle adding an item
   const handleAddItem = async (item: PaletteItem) => {
     if (!collectionSlug || typeof collectionSlug !== "string") return;
@@ -170,6 +198,36 @@ export default function CollectionPage() {
     }
   };
 
+  // Handler to open the edit dialog
+  const handleOpenEditNote = () => {
+    setEditableNote(collection?.note || ""); // Reset to current note when opening
+    setSaveNoteError(null); // Clear previous errors
+    setIsEditingNote(true);
+  };
+
+  // Handler to save the edited note
+  const handleSaveNote = async () => {
+    if (!collectionSlug || typeof collectionSlug !== "string") return;
+
+    setIsSavingNote(true);
+    setSaveNoteError(null);
+
+    try {
+      await updateCollectionNote(collectionSlug, editableNote.trim()); // Pass trimmed note
+      console.log("Note updated successfully, revalidating...");
+      mutateItems(); // Revalidate SWR data to get updated collection details
+      setIsEditingNote(false); // Close dialog on success
+    } catch (err) {
+      console.error("Error updating note:", err);
+      setSaveNoteError(
+        err instanceof Error ? err.message : "Failed to save note"
+      );
+      // Keep dialog open on error
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
   if (authLoading || (itemsLoading && !data)) {
     // Show loading if auth or initial data fetch is happening
     return (
@@ -213,6 +271,15 @@ export default function CollectionPage() {
         {/* Use collection name from fetched data */}
         {collection.name}
       </h1>
+      {/* Show Edit button only to owner */}
+      {user?.id === collection?.userId && (
+        <div className="mb-4">
+          <Button variant="outline" size="sm" onClick={handleOpenEditNote}>
+            Edit Note
+          </Button>
+        </div>
+      )}
+
       {/* Display Collection Note/Description */}
       {(collection.note || collection.description) && (
         <div className="mb-4 p-3 bg-gray-50 rounded border border-gray-200">
@@ -322,6 +389,54 @@ export default function CollectionPage() {
           })}
         </ul>
       )}
+
+      {/* --- Edit Note Dialog --- */}
+      <Dialog open={isEditingNote} onOpenChange={setIsEditingNote}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Note</DialogTitle>
+            <DialogDescription>
+              Add or update the notes for this collection.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="note-textarea" className="text-right">
+                Note
+              </Label>
+              <Textarea
+                id="note-textarea"
+                value={editableNote}
+                onChange={(e) => setEditableNote(e.target.value)}
+                placeholder="Add your notes here... Supports basic markdown maybe later?"
+                className="col-span-3 h-32" // Make textarea larger
+              />
+            </div>
+            {/* Display save error inside dialog */}
+            {saveNoteError && (
+              <p className="text-sm text-red-500 col-span-4 text-center">
+                Error: {saveNoteError}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditingNote(false)}
+              disabled={isSavingNote}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveNote}
+              disabled={isSavingNote}
+            >
+              {isSavingNote ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

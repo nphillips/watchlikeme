@@ -194,17 +194,16 @@ export async function updateCollectionNote(
   collectionSlug: string,
   note: string | null
 ): Promise<Collection> {
-  // Assuming backend returns the updated collection
   const path = `/api/collections/${collectionSlug}`;
-  console.log(`[API Client] Updating note for: ${path}`);
+  console.log(`[API Client] Updating note for: ${path} via PUT`);
 
   const response = await backendFetch(path, {
-    method: "PATCH",
+    method: "PUT",
     headers: {},
     body: JSON.stringify({ note: note }),
   });
 
-  console.log(`[API Client] PATCH ${path} status: ${response.status}`);
+  console.log(`[API Client] PUT ${path} status: ${response.status}`);
 
   if (!response.ok) {
     let errorBody = `Failed to update note: ${response.statusText}`;
@@ -232,7 +231,6 @@ export async function updateCollectionNote(
     throw new Error(`${errorBody} (Status: ${response.status})`);
   }
 
-  // Success case - assumes PATCH returns updated collection as JSON
   const updatedCollection: Collection = await response.json();
   console.log(
     `[API Client] Successfully updated collection note:`,

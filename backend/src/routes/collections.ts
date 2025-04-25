@@ -433,70 +433,46 @@ router.get("/:id", (req, res) => {
 });
 
 // --- Update Collection Details (e.g., Note) ---
-// Replace the placeholder PATCH route
-router.patch("/:collectionSlug", authenticateToken, async (req, res) => {
+// Change method from PATCH to PUT
+router.put("/:collectionSlug", authenticateToken, async (req, res) => {
   const authInfo = req.watchLikeMeAuthInfo;
   const { collectionSlug } = req.params;
-  // Expecting { note: string | null } in the body
   const { note } = req.body as { note?: string | null };
 
   if (!authInfo) {
     return res.status(401).json({ error: "User not authenticated" });
   }
-
-  // Validate input - check if 'note' was actually provided in the body
-  // Allowing `null` to clear the note.
   if (note === undefined) {
     return res
       .status(400)
       .json({ error: "Missing 'note' field in request body" });
   }
-
   try {
-    // 1. Find the collection first to ensure ownership
     const collection = await prisma.collection.findUnique({
-      where: {
-        userId_slug: {
-          userId: authInfo.id,
-          slug: collectionSlug,
-        },
-      },
-      select: { id: true }, // Only need ID for verification
+      where: { userId_slug: { userId: authInfo.id, slug: collectionSlug } },
+      select: { id: true },
     });
-
     if (!collection) {
       console.log(
-        `[Patch Collection] Collection ${collectionSlug} not found for user ${authInfo.id}`
+        `[Put Collection] Collection ${collectionSlug} not found for user ${authInfo.id}`
       );
       return res
         .status(404)
         .json({ error: "Collection not found or not owned by user" });
     }
-
-    // 2. Update the collection note
     const updatedCollection = await prisma.collection.update({
-      where: {
-        id: collection.id, // Use the verified ID
-      },
-      data: {
-        note: note, // Update the note field
-        // updatedAt is automatically handled by Prisma
-      },
+      where: { id: collection.id },
+      data: { note: note },
     });
-
     console.log(
-      `[Patch Collection] Updated note for collection ${collectionSlug} (ID: ${collection.id})`
+      `[Put Collection] Updated note for collection ${collectionSlug} (ID: ${collection.id})`
     );
-
-    // 3. Return the updated collection (or just success status)
-    // Returning the updated object might be useful for the client
     res.json(updatedCollection);
   } catch (error) {
     console.error(
-      `[Patch Collection] Error updating note for collection ${collectionSlug}:`,
+      `[Put Collection] Error updating note for collection ${collectionSlug}:`,
       error
     );
-    // Handle potential Prisma errors
     res.status(500).json({ error: "Failed to update collection note" });
   }
 });

@@ -3,20 +3,56 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { env } from "../env";
-import { verifyToken } from "./auth";
+import { authenticateToken } from "../middleware/auth";
 import { getGoogleTokensForUser } from "../lib/google";
 
 const prisma = new PrismaClient();
 const router = express.Router();
 
 // User profile and token management
-router.get("/me", verifyToken, (req, res) => {
-  res.json({ id: req.user.id });
+router.get("/me", authenticateToken, async (req, res) => {
+  const authInfo = req.watchLikeMeAuthInfo;
+  if (!authInfo) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+  // Fetch full user details if needed, or return basic info from authInfo
+  // Let's fetch full details for now, as the frontend might expect it
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: authInfo.id },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        googleId: true, // Needed to determine link status
+        name: true,
+        image: true,
+        role: true,
+        // googleToken: false // Don't return tokens
+      },
+    });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    // Determine hasGoogleAuth based on googleId presence
+    const userResponse = {
+      ...user,
+      hasGoogleAuth: !!user.googleId,
+    };
+    res.json(userResponse);
+  } catch (error) {
+    console.error("Error fetching user details for /me:", error);
+    res.status(500).json({ error: "Failed to fetch user details" });
+  }
 });
 
-router.get("/me/google-tokens", verifyToken, async (req, res, next) => {
+router.get("/me/google-tokens", authenticateToken, async (req, res, next) => {
+  const authInfo = req.watchLikeMeAuthInfo;
+  if (!authInfo) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
   try {
-    const tokens = await getGoogleTokensForUser(req.user.id);
+    const tokens = await getGoogleTokensForUser(authInfo.id);
     if (!tokens) {
       return res.status(404).json({ error: "No Google tokens found" });
     }
@@ -267,6 +303,48 @@ router.get("/:id", async (req, res) => {
   } catch (error) {
     console.error("Error fetching user by ID:", error);
     return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Delete Google Tokens
+router.delete("/me/google-tokens", authenticateToken, async (req, res) => {
+  const authInfo = req.watchLikeMeAuthInfo;
+  if (!authInfo) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  try {
+    console.log(`[Delete Tokens] Attempting delete for user: ${authInfo.id}`);
+
+    // Use a transaction to delete token and nullify googleId on User
+    await prisma.$transaction(async (tx) => {
+      // Delete the token record
+      // Use deleteMany as the relation is 1-to-1 based on unique userId
+      const deleteResult = await tx.googleToken.deleteMany({
+        where: { userId: authInfo.id },
+      });
+      console.log(
+        `[Delete Tokens] GoogleToken delete result count: ${deleteResult.count}`
+      );
+
+      // Set User.googleId to null
+      await tx.user.update({
+        where: { id: authInfo.id },
+        data: { googleId: null },
+      });
+      console.log(
+        `[Delete Tokens] Set User.googleId to null for user: ${authInfo.id}`
+      );
+    });
+
+    // Return success (204 No Content)
+    res.status(204).send();
+  } catch (error) {
+    console.error(
+      `[Delete Tokens] Error unlinking Google account for user ${authInfo.id}:`,
+      error
+    );
+    res.status(500).json({ error: "Failed to unlink Google account" });
   }
 });
 

@@ -8,49 +8,71 @@ import { Collection } from "@/interfaces/index"; // Explicit index might still b
 import { useEffect, useState } from "react";
 import Nav from "@/components/Nav";
 import { useAuth } from "@/hooks/useAuth";
-import { useParams } from "next/navigation";
 
 // Let's make this a client component to handle loading/error states easily
 export default function CollectionsPage() {
   const [collections, setCollections] = useState<Collection[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [collectionsLoading, setCollectionsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { loading } = useAuth();
-  const { userSlug } = useParams();
+  const { user, loading: authLoading } = useAuth();
+
   useEffect(() => {
-    async function loadCollections() {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const fetchedCollections = await getCollections();
-        setCollections(fetchedCollections);
-      } catch (err) {
-        console.error("Failed to load collections:", err);
-        setError(
-          err instanceof Error ? err.message : "An unknown error occurred"
-        );
-      } finally {
-        setIsLoading(false);
+    if (!authLoading && user) {
+      async function loadCollections() {
+        setCollectionsLoading(true);
+        setError(null);
+        try {
+          const fetchedCollections = await getCollections();
+          setCollections(fetchedCollections);
+        } catch (err) {
+          console.error("Failed to load collections:", err);
+          setError(
+            err instanceof Error ? err.message : "An unknown error occurred"
+          );
+        } finally {
+          setCollectionsLoading(false);
+        }
       }
+      loadCollections();
+    } else if (!authLoading && !user) {
+      setCollectionsLoading(false);
+      setError(null);
+      setCollections([]);
     }
+  }, [authLoading, user]);
 
-    loadCollections();
-  }, []); // Empty dependency array ensures this runs once on mount
-
-  if (loading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen p-4 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
   }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen p-4">
+        <Nav />
+        <div className="text-center mt-10">
+          <p>Please log in to view your collections.</p>
+          <Link
+            href="/login"
+            className="mt-4 inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Log In
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen p-4">
       <Nav />
 
       <h1 className="text-2xl font-bold my-4">My Collections</h1>
 
-      {isLoading && <p>Loading collections...</p>}
+      {collectionsLoading && <p>Loading collections...</p>}
 
       {error && (
         <div>
@@ -59,7 +81,7 @@ export default function CollectionsPage() {
         </div>
       )}
 
-      {!isLoading && !error && (
+      {!collectionsLoading && !error && (
         <>
           {collections.length === 0 ? (
             <p>You haven't created any collections yet.</p>
@@ -67,23 +89,19 @@ export default function CollectionsPage() {
             <ul>
               {collections.map((collection) => (
                 <li key={collection.id}>
-                  {/* TODO: Update link when individual collection page exists */}
-                  {/* <Link href={`/collections/${collection.slug}`}> */}
                   <Link
-                    href={`/${collection.userSlug}/${collection.slug}`}
+                    href={`/${collection.userSlug || user.username}/${
+                      collection.slug
+                    }`}
                     className="text-blue-500 hover:text-blue-700"
                   >
                     {collection.name}
                   </Link>
-                  {/* </Link> */}
                   {collection.description && <p>{collection.description}</p>}
-                  {/* Optionally display item count or previews later */}
-                  {/* <p>{collection.items?.length ?? 0} items</p> */}
                 </li>
               ))}
             </ul>
           )}
-          {/* TODO: Add a button/link to create a new collection */}
         </>
       )}
     </div>

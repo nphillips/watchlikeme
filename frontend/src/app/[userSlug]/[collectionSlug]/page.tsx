@@ -10,7 +10,12 @@ import {
   addCollectionItem,
   removeCollectionItem,
 } from "@/lib/api/collections";
-import { PopulatedCollectionItem, AddItemRequestBody } from "@/interfaces";
+import {
+  PopulatedCollectionItem,
+  AddItemRequestBody,
+  CollectionWithItems,
+  Collection,
+} from "@/interfaces";
 import { useParams } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 import useSWR, { mutate } from "swr";
@@ -40,34 +45,50 @@ export default function CollectionPage() {
   const { user, loading: authLoading } = useAuth();
   const { userSlug, collectionSlug } = useParams();
 
-  // Construct the SWR key. It should depend on collectionSlug.
   const swrKey = collectionSlug
     ? `/api/collections/${collectionSlug}/items`
     : null;
 
-  // Use SWR to fetch collection items
+  // Update SWR hook to expect CollectionWithItems
   const {
-    data: items = [], // Default to empty array
+    data, // data will be { collection: Collection, items: PopulatedCollectionItem[] } | undefined
     error: itemsError,
-    isLoading: itemsLoading, // SWR provides isLoading
-    mutate: mutateItems, // Function to trigger revalidation
-  } = useSWR<PopulatedCollectionItem[]>(
+    isLoading: itemsLoading,
+    mutate: mutateItems,
+  } = useSWR<CollectionWithItems>(
     swrKey,
     () => {
       if (!collectionSlug || typeof collectionSlug !== "string") {
         throw new Error("Invalid collection identifier.");
       }
-      return getCollectionItems(collectionSlug); // Use our API function
+      // getCollectionItems now returns CollectionWithItems
+      return getCollectionItems(collectionSlug);
     },
     {
-      revalidateOnFocus: false, // Optional: prevent revalidating on window focus
+      revalidateOnFocus: false,
     }
   );
 
-  // Create a memoized Set of existing YouTube IDs in this collection
+  // Extract collection and items from data when available
+  const collection: Collection | null = data?.collection ?? null;
+  const items: PopulatedCollectionItem[] = data?.items ?? [];
+
+  useEffect(() => {
+    // Update log to show structure
+    console.log("[CollectionPage] SWR data updated:", data);
+  }, [data]);
+
+  // State for Add Item operation feedback
+  const [isAdding, setIsAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [removingItemId, setRemovingItemId] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+
+  // Calculate existingItemYoutubeIds based on extracted items
   const existingItemYoutubeIds = useMemo(() => {
     const idSet = new Set<string>();
     items.forEach((item) => {
+      // Use extracted items array
       if (item.channel?.youtubeId) {
         idSet.add(item.channel.youtubeId);
       } else if (item.video?.youtubeId) {
@@ -76,46 +97,27 @@ export default function CollectionPage() {
     });
     console.log("[CollectionPage] Recalculated existingItemYoutubeIds:", idSet);
     return idSet;
-  }, [items]); // Recalculate only when items array changes
-
-  // Add this useEffect to log items when they change
-  useEffect(() => {
-    console.log("[CollectionPage] Items state updated (raw SWR data):", items);
-  }, [items]); // Dependency array watches the items data from SWR
-
-  // State for Add Item operation feedback
-  const [isAdding, setIsAdding] = useState(false);
-  const [addError, setAddError] = useState<string | null>(null);
-  const [removingItemId, setRemovingItemId] = useState<string | null>(null);
-  const [removeError, setRemoveError] = useState<string | null>(null);
+  }, [items]); // Dependency is now the extracted items array
 
   // Function to handle adding an item
   const handleAddItem = async (item: PaletteItem) => {
     if (!collectionSlug || typeof collectionSlug !== "string") return;
-
     setIsAdding(true);
     setAddError(null);
-
     let itemType: "channel" | "video";
     let youtubeId: string;
     let title: string;
     let thumbnail: string | undefined;
-
     try {
-      // Determine type and extract data based on item structure
       if (
         typeof item.id === "object" &&
         (item.id.videoId || item.id.channelId)
       ) {
-        // YouTube search result
         itemType = item.id.videoId ? "video" : "channel";
         youtubeId = item.id.videoId || item.id.channelId!;
         title = item.snippet?.title || "Untitled";
         thumbnail = item.snippet?.thumbnails?.default?.url;
       } else if (typeof item.id === "string") {
-        // Likely a subscription item from /api/channels
-        // Assuming subscription items are always channels for now
-        // This might need adjustment based on what /api/channels actually returns
         itemType = "channel";
         youtubeId = item.id;
         title = item.title || "Untitled";
@@ -123,48 +125,39 @@ export default function CollectionPage() {
       } else {
         throw new Error("Unrecognized item structure from Command Palette");
       }
-
       const requestBody: AddItemRequestBody = {
         itemType,
         youtubeId,
         title,
         thumbnail,
       };
-
       console.log("Attempting to add item:", requestBody);
-
-      // Call the API
+      // Pass the correct mutation key or options if needed,
+      // but default mutate() should refetch the same swrKey
       await addCollectionItem(collectionSlug, requestBody);
-
-      // On success, trigger a refetch of the items list
       console.log("Item added successfully, revalidating list...");
-      mutateItems(); // Re-runs the SWR fetcher
+      mutateItems();
     } catch (err) {
       console.error("Error adding collection item:", err);
-      // Check for the specific duplicate error message from the 409 response
       if (err instanceof Error && err.message.includes("Item already exists")) {
         setAddError("This item is already in the collection.");
       } else {
-        // Handle other errors
         setAddError(err instanceof Error ? err.message : "Failed to add item");
       }
-      // Optionally clear the error after a few seconds
       setTimeout(() => setAddError(null), 5000);
     } finally {
       setIsAdding(false);
     }
   };
 
-  // Function to handle removing an item
   const handleRemoveItem = async (collectionItemId: string) => {
     if (!collectionSlug || typeof collectionSlug !== "string") return;
-
     setRemovingItemId(collectionItemId);
     setRemoveError(null);
-
     try {
       await removeCollectionItem(collectionSlug, collectionItemId);
       console.log(`Item ${collectionItemId} removed, revalidating list...`);
+      // SWR will automatically refetch the data for the key after mutateItems()
       mutateItems();
     } catch (err) {
       console.error(`Error removing item ${collectionItemId}:`, err);
@@ -177,10 +170,38 @@ export default function CollectionPage() {
     }
   };
 
-  if (authLoading) {
+  if (authLoading || (itemsLoading && !data)) {
+    // Show loading if auth or initial data fetch is happening
     return (
       <div className="min-h-screen p-4 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  // Handle fetch errors after initial loading state
+  if (itemsError) {
+    return (
+      <div className="min-h-screen p-4">
+        <Nav />
+        <div className="text-center text-red-500 mt-10">
+          <p>
+            Error loading collection:{" "}
+            {itemsError.message || "An unknown error occurred"}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle case where collection itself wasn't found (even if items array is empty)
+  if (!collection) {
+    return (
+      <div className="min-h-screen p-4">
+        <Nav />
+        <div className="text-center text-gray-500 mt-10">
+          <p>Collection not found.</p>
+        </div>
       </div>
     );
   }
@@ -189,49 +210,59 @@ export default function CollectionPage() {
     <div className="min-h-screen p-4">
       <Nav />
       <h1 className="text-2xl font-bold my-4">
-        {decodeURIComponent(userSlug as string)} /{" "}
-        {decodeURIComponent(collectionSlug as string)}
+        {/* Use collection name from fetched data */}
+        {collection.name}
       </h1>
+      {/* Display Collection Note/Description */}
+      {(collection.note || collection.description) && (
+        <div className="mb-4 p-3 bg-gray-50 rounded border border-gray-200">
+          <h3 className="font-semibold mb-1">Notes:</h3>
+          {/* TODO: Render markdown if we support it later */}
+          <p className="text-gray-700 whitespace-pre-wrap">
+            {collection.note || collection.description}
+          </p>
+        </div>
+      )}
+
       <div className="my-4">
+        {/* Command Palette remains the same */}
         <CommandPalette
           onAddItem={handleAddItem}
           existingItemYoutubeIds={existingItemYoutubeIds}
         />
+        {/* ... (Add/Remove operation feedback) ... */}
         {isAdding && (
           <p className="text-sm text-blue-500 mt-2">Adding item...</p>
         )}
         {addError && (
-          <p className="text-sm text-red-500 mt-2">Error: {addError}</p>
+          <p className="text-sm text-red-500 mt-2">Error adding: {addError}</p>
         )}
         {removeError && (
-          <p className="text-sm text-red-500 mt-2">Error: {removeError}</p>
+          <p className="text-sm text-red-500 mt-2">
+            Error removing: {removeError}
+          </p>
         )}
       </div>
+
       <h2 className="text-lg font-bold my-4">Items in Collection</h2>
 
-      {itemsLoading && (
+      {/* Use extracted items array for rendering list */}
+      {/* Loading indicator specifically for items *after* initial page load can use itemsLoading */}
+      {itemsLoading && items.length === 0 && (
         <div className="flex justify-center items-center">
           <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
         </div>
       )}
 
-      {itemsError && (
-        <div className="text-center text-red-500">
-          <p>
-            Error loading items:{" "}
-            {itemsError.message || "An unknown error occurred"}
-          </p>
-        </div>
-      )}
-
-      {!itemsLoading && !itemsError && items.length === 0 && (
+      {!itemsLoading && items.length === 0 && (
         <div className="text-center text-gray-500">
           No items in this collection yet.
         </div>
       )}
 
-      {!itemsLoading && !itemsError && items.length > 0 && (
+      {items.length > 0 && (
         <ul className="space-y-2">
+          {/* Use extracted items array */}
           {items.map((item) => {
             const displayItem = item.channel || item.video;
             const channelInfo = item.channel || item.video?.channel;
@@ -245,7 +276,6 @@ export default function CollectionPage() {
               );
               return null;
             }
-
             return (
               <li
                 key={item.id}

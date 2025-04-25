@@ -28,32 +28,37 @@ export interface Video {
   channel?: Channel;
 }
 
-// Corresponds to Prisma CollectionItem model
-// This represents the structure returned by GET /api/collections/:slug/items
+// Represents a single item within a collection, including populated relations
 export interface PopulatedCollectionItem {
   id: string;
   collectionId: string;
   channelId: string | null;
   videoId: string | null;
   createdAt: string;
-  // Based on backend include: { channel: true, video: { include: { channel: true } } }
-  channel: Channel | null; // Full channel if channelId is set
-  video: Video | null; // Full video (including its channel) if videoId is set
+  channel: Channel | null;
+  video: Video | null;
 }
 
-// Corresponds to Prisma Collection model
+// Represents the base Collection data (without items initially)
 export interface Collection {
   id: string;
   slug: string;
   name: string;
   description: string | null;
+  note: string | null; // Added note field based on schema check
   isPublic: boolean;
   userId: string;
-  userSlug: string;
-  createdAt: string; // Dates are often serialized as strings
-  updatedAt: string; // Dates are often serialized as strings
-  // Use the detailed type if items are included (e.g., for a specific collection view)
-  items?: PopulatedCollectionItem[];
+  // userSlug might not be directly on the model, confirm if needed
+  userSlug?: string; // Making optional, might be added via transformation
+  createdAt: string;
+  updatedAt: string;
+  // Removed items from base interface
+}
+
+// Represents the structure returned by GET /api/collections/:slug/items
+export interface CollectionWithItems {
+  collection: Collection; // The parent collection's details
+  items: PopulatedCollectionItem[]; // The list of items
 }
 
 // Request body for adding an item to a collection

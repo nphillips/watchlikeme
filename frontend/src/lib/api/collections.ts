@@ -3,6 +3,7 @@ import {
   Collection,
   AddItemRequestBody,
   PopulatedCollectionItem,
+  CollectionWithItems,
 } from "../../interfaces/index";
 import { backendFetch } from "../backend-fetch"; // Import the helper
 
@@ -39,21 +40,21 @@ export async function getCollections(): Promise<Collection[]> {
 }
 
 /**
- * Fetches items for a specific collection.
+ * Fetches items and details for a specific collection.
  * @param collectionSlug The slug of the collection.
  */
 export async function getCollectionItems(
   collectionSlug: string
-): Promise<PopulatedCollectionItem[]> {
+): Promise<CollectionWithItems> {
   const path = `/api/collections/${collectionSlug}/items`;
-  console.log(`[API Client] Fetching items from: ${path}`);
+  console.log(`[API Client] Fetching collection details & items from: ${path}`);
 
   const response = await backendFetch(path, { method: "GET" });
 
   console.log(`[API Client] GET ${path} status: ${response.status}`);
 
   if (!response.ok) {
-    let errorBody = "Failed to fetch collection items";
+    let errorBody = "Failed to fetch collection data";
     try {
       const body = await response.json();
       errorBody = body.error || body.message || errorBody;
@@ -61,12 +62,21 @@ export async function getCollectionItems(
     } catch (e) {
       console.error("[API Client] Failed to parse error response body");
     }
+    // Handle specific errors like 404 Not Found / 403 Forbidden
+    if (response.status === 404) {
+      errorBody = "Collection not found or not accessible.";
+    }
+    if (response.status === 403) {
+      errorBody = "You do not have permission to view this private collection.";
+    }
     throw new Error(`${errorBody} (Status: ${response.status})`);
   }
 
-  const items: PopulatedCollectionItem[] = await response.json();
-  console.log(`[API Client] Successfully fetched ${items.length} items.`);
-  return items;
+  const data: CollectionWithItems = await response.json();
+  console.log(
+    `[API Client] Successfully fetched collection ${data.collection.name} with ${data.items.length} items.`
+  );
+  return data;
 }
 
 /**
@@ -84,26 +94,41 @@ export async function addCollectionItem(
 
   const response = await backendFetch(path, {
     method: "POST",
-    headers: {
-      // backendFetch sets Content-Type: application/json by default
-    },
+    headers: {},
     body: JSON.stringify(itemData),
   });
 
   console.log(`[API Client] POST ${path} status: ${response.status}`);
 
   if (!response.ok) {
-    let errorBody = "Failed to add item to collection";
+    let errorBody = `Failed to add item: ${response.statusText}`;
+    const contentType = response.headers.get("content-type");
     try {
-      const body = await response.json();
-      errorBody = body.error || body.message || errorBody;
-      console.error("[API Client] Error response body:", body);
+      // Only parse JSON if the content type indicates it
+      if (contentType && contentType.includes("application/json")) {
+        const body = await response.json();
+        errorBody = body.error || body.message || errorBody;
+        console.error("[API Client] Error response body (JSON):", body);
+      } else {
+        // Otherwise, try to get text, but don't fail if body is empty
+        const textBody = await response.text();
+        if (textBody) {
+          errorBody = textBody;
+          console.error(
+            "[API Client] Error response body (non-JSON):",
+            textBody
+          );
+        } else {
+          console.log("[API Client] No error body returned.");
+        }
+      }
     } catch (e) {
-      console.error("[API Client] Failed to parse error response body");
+      console.error("[API Client] Failed to parse/read error response body", e);
     }
     throw new Error(`${errorBody} (Status: ${response.status})`);
   }
 
+  // Success case - assumes 201 returns the created item as JSON
   const newItem: PopulatedCollectionItem = await response.json();
   console.log(`[API Client] Successfully added item:`, newItem);
   return newItem;
@@ -136,19 +161,82 @@ export async function removeCollectionItem(
   }
 
   // Handle errors
-  let errorBody = "Failed to remove item from collection";
+  let errorBody = `Failed to remove item: ${response.statusText}`;
+  const contentType = response.headers.get("content-type");
   try {
-    // Try to parse error body even if status isn't 204
-    if (response.body) {
-      // Check if there is a body to parse
+    // Only parse JSON if the content type indicates it
+    if (contentType && contentType.includes("application/json")) {
       const body = await response.json();
       errorBody = body.error || body.message || errorBody;
-      console.error("[API Client] Error response body:", body);
+      console.error("[API Client] Error response body (JSON):", body);
     } else {
-      console.log("[API Client] No error body returned.");
+      // Otherwise, try to get text, but don't fail if body is empty
+      const textBody = await response.text();
+      if (textBody) {
+        errorBody = textBody;
+        console.error("[API Client] Error response body (non-JSON):", textBody);
+      } else {
+        console.log("[API Client] No error body returned.");
+      }
     }
   } catch (e) {
-    console.error("[API Client] Failed to parse error response body");
+    console.error("[API Client] Failed to parse/read error response body", e);
   }
   throw new Error(`${errorBody} (Status: ${response.status})`);
+}
+
+/**
+ * Updates the note for a specific collection.
+ * @param collectionSlug The slug of the collection.
+ * @param note The new note content (string or null to clear).
+ */
+export async function updateCollectionNote(
+  collectionSlug: string,
+  note: string | null
+): Promise<Collection> {
+  // Assuming backend returns the updated collection
+  const path = `/api/collections/${collectionSlug}`;
+  console.log(`[API Client] Updating note for: ${path}`);
+
+  const response = await backendFetch(path, {
+    method: "PATCH",
+    headers: {},
+    body: JSON.stringify({ note: note }),
+  });
+
+  console.log(`[API Client] PATCH ${path} status: ${response.status}`);
+
+  if (!response.ok) {
+    let errorBody = `Failed to update note: ${response.statusText}`;
+    const contentType = response.headers.get("content-type");
+    try {
+      if (contentType && contentType.includes("application/json")) {
+        const body = await response.json();
+        errorBody = body.error || body.message || errorBody;
+        console.error("[API Client] Error response body (JSON):", body);
+      } else {
+        const textBody = await response.text();
+        if (textBody) {
+          errorBody = textBody;
+          console.error(
+            "[API Client] Error response body (non-JSON):",
+            textBody
+          );
+        } else {
+          console.log("[API Client] No error body returned.");
+        }
+      }
+    } catch (e) {
+      console.error("[API Client] Failed to parse/read error response body", e);
+    }
+    throw new Error(`${errorBody} (Status: ${response.status})`);
+  }
+
+  // Success case - assumes PATCH returns updated collection as JSON
+  const updatedCollection: Collection = await response.json();
+  console.log(
+    `[API Client] Successfully updated collection note:`,
+    updatedCollection
+  );
+  return updatedCollection;
 }

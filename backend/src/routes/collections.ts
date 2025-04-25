@@ -337,13 +337,12 @@ router.post(
   }
 );
 
-// --- Get Items for a Collection ---
+// --- Get Items and Details for a Collection ---
 router.get(
-  "/:collectionSlug/items",
+  "/:collectionSlug/items", // Keep endpoint name for now, but it returns more
   authenticateToken,
-  // Define Params type directly for Request
-  async (req: Request<{ collectionSlug: string }>, res: Response) => {
-    const authInfo = req.watchLikeMeAuthInfo; // Use the specific property
+  async (req, res) => {
+    const authInfo = req.watchLikeMeAuthInfo;
     const { collectionSlug } = req.params;
 
     if (!authInfo) {
@@ -351,42 +350,69 @@ router.get(
     }
 
     try {
-      // 1. Find the collection by slug and user ID
+      // 1. Find the collection, ensuring ownership or public status
       const collection = await prisma.collection.findUnique({
         where: {
           userId_slug: {
-            userId: authInfo.id, // Use authInfo
+            userId: authInfo.id, // Need user ID for potential ownership check
             slug: collectionSlug,
           },
         },
-      });
-
-      if (!collection) {
-        return res
-          .status(404)
-          .json({ error: "Collection not found or not owned by user" });
-      }
-
-      // 2. Fetch collection items, including related channel and video data
-      const items = await prisma.collectionItem.findMany({
-        where: {
-          collectionId: collection.id,
-        },
+        // Include items directly in this query
         include: {
-          channel: true,
-          video: {
+          items: {
             include: {
               channel: true,
+              video: { include: { channel: true } },
             },
+            orderBy: { createdAt: "asc" },
           },
-        },
-        orderBy: {
-          createdAt: "asc",
         },
       });
 
-      // 3. Return the items
-      res.json(items);
+      // Check if collection exists AND if user is authorized to view it
+      if (!collection) {
+        // Maybe it exists but is private and owned by someone else?
+        // Or it's public?
+        // Let's try finding public one if the specific user one failed
+        const publicCollection = await prisma.collection.findFirst({
+          where: {
+            slug: collectionSlug,
+            isPublic: true,
+          },
+          include: {
+            items: {
+              include: {
+                channel: true,
+                video: { include: { channel: true } },
+              },
+              orderBy: { createdAt: "asc" },
+            },
+          },
+        });
+
+        if (!publicCollection) {
+          console.log(
+            `[Get Items] Collection ${collectionSlug} not found or not accessible by user ${authInfo.id}`
+          );
+          return res
+            .status(404)
+            .json({ error: "Collection not found or not accessible" });
+        }
+        // If found public collection, return that
+        console.log(`[Get Items] Found public collection ${collectionSlug}`);
+        // We don't need the user relation here, just the collection data and items
+        const { items, ...collectionData } = publicCollection;
+        return res.json({ collection: collectionData, items: items || [] });
+      }
+
+      // If we found the collection via userId_slug, it means the user owns it
+      // (regardless of public status)
+      console.log(
+        `[Get Items] Found collection ${collectionSlug} owned by user ${authInfo.id}`
+      );
+      const { items, ...collectionData } = collection;
+      return res.json({ collection: collectionData, items: items || [] });
     } catch (error) {
       console.error(
         `Error fetching items for collection ${collectionSlug}:`,
@@ -406,17 +432,73 @@ router.get("/:id", (req, res) => {
   res.json({ message: "Collection retrieval endpoint" });
 });
 
-router.patch("/:id", (req, res) => {
-  res.json({ message: "Collection update endpoint" });
-});
+// --- Update Collection Details (e.g., Note) ---
+// Replace the placeholder PATCH route
+router.patch("/:collectionSlug", authenticateToken, async (req, res) => {
+  const authInfo = req.watchLikeMeAuthInfo;
+  const { collectionSlug } = req.params;
+  // Expecting { note: string | null } in the body
+  const { note } = req.body as { note?: string | null };
 
-router.delete("/:id", (req, res) => {
-  res.json({ message: "Collection deletion endpoint" });
-});
+  if (!authInfo) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
 
-// Public collection routes
-router.get("/:userSlug/:collectionSlug", (req, res) => {
-  res.json({ message: "Public collection endpoint" });
+  // Validate input - check if 'note' was actually provided in the body
+  // Allowing `null` to clear the note.
+  if (note === undefined) {
+    return res
+      .status(400)
+      .json({ error: "Missing 'note' field in request body" });
+  }
+
+  try {
+    // 1. Find the collection first to ensure ownership
+    const collection = await prisma.collection.findUnique({
+      where: {
+        userId_slug: {
+          userId: authInfo.id,
+          slug: collectionSlug,
+        },
+      },
+      select: { id: true }, // Only need ID for verification
+    });
+
+    if (!collection) {
+      console.log(
+        `[Patch Collection] Collection ${collectionSlug} not found for user ${authInfo.id}`
+      );
+      return res
+        .status(404)
+        .json({ error: "Collection not found or not owned by user" });
+    }
+
+    // 2. Update the collection note
+    const updatedCollection = await prisma.collection.update({
+      where: {
+        id: collection.id, // Use the verified ID
+      },
+      data: {
+        note: note, // Update the note field
+        // updatedAt is automatically handled by Prisma
+      },
+    });
+
+    console.log(
+      `[Patch Collection] Updated note for collection ${collectionSlug} (ID: ${collection.id})`
+    );
+
+    // 3. Return the updated collection (or just success status)
+    // Returning the updated object might be useful for the client
+    res.json(updatedCollection);
+  } catch (error) {
+    console.error(
+      `[Patch Collection] Error updating note for collection ${collectionSlug}:`,
+      error
+    );
+    // Handle potential Prisma errors
+    res.status(500).json({ error: "Failed to update collection note" });
+  }
 });
 
 // --- Delete Item from Collection ---
@@ -491,5 +573,10 @@ router.delete(
     }
   }
 );
+
+// Public collection routes
+router.get("/:userSlug/:collectionSlug", (req, res) => {
+  res.json({ message: "Public collection endpoint" });
+});
 
 export default router;

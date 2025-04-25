@@ -8,8 +8,9 @@ export function useAuth() {
   const [user, setUser] = useState<{
     id: string; // Add id if returned by /api/users/me
     email: string;
-    // Add other relevant fields like username, name, image, role etc.
-    // hasGoogleAuth?: boolean; // This likely needs to be derived on the backend
+    username: string; // Add username
+    hasGoogleAuth: boolean; // Add hasGoogleAuth
+    // Add other relevant fields like name, image, role etc.
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter(); // Keep router if needed for redirects like authSuccess

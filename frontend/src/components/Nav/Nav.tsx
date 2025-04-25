@@ -2,6 +2,7 @@ import { Button } from "../ui/button";
 import { useRouter } from "next/navigation";
 import { removeCookie } from "@/lib/cookies";
 import { useAuth } from "@/hooks/useAuth";
+import Link from "next/link";
 
 const Nav = () => {
   const { isAuthenticated, user, loading, handleLinkGoogle } = useAuth();
@@ -43,7 +44,9 @@ const Nav = () => {
   return (
     <div className="flex justify-between items-center">
       <div>
-        <h1 className="text-2xl font-bold mb-4">WatchLikeMe</h1>
+        <Link href="/" className="text-2xl font-bold mb-4">
+          WatchLikeMe
+        </Link>
       </div>
       <div>
         <div>

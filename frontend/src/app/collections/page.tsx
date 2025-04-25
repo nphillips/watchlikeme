@@ -6,13 +6,17 @@ import Link from "next/link";
 import { getCollections } from "@/lib/api/collections";
 import { Collection } from "@/interfaces/index"; // Explicit index might still be needed with relative path
 import { useEffect, useState } from "react";
+import Nav from "@/components/Nav";
+import { useAuth } from "@/hooks/useAuth";
+import { useParams } from "next/navigation";
 
 // Let's make this a client component to handle loading/error states easily
 export default function CollectionsPage() {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  const { loading } = useAuth();
+  const { userSlug } = useParams();
   useEffect(() => {
     async function loadCollections() {
       setIsLoading(true);
@@ -33,9 +37,18 @@ export default function CollectionsPage() {
     loadCollections();
   }, []); // Empty dependency array ensures this runs once on mount
 
+  if (loading) {
+    return (
+      <div className="min-h-screen p-4 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
   return (
-    <div>
-      <h1>Your Collections</h1>
+    <div className="min-h-screen p-4">
+      <Nav />
+
+      <h1 className="text-2xl font-bold my-4">My Collections</h1>
 
       {isLoading && <p>Loading collections...</p>}
 
@@ -56,7 +69,12 @@ export default function CollectionsPage() {
                 <li key={collection.id}>
                   {/* TODO: Update link when individual collection page exists */}
                   {/* <Link href={`/collections/${collection.slug}`}> */}
-                  <h3>{collection.name}</h3>
+                  <Link
+                    href={`/${collection.userSlug}/${collection.slug}`}
+                    className="text-blue-500 hover:text-blue-700"
+                  >
+                    {collection.name}
+                  </Link>
                   {/* </Link> */}
                   {collection.description && <p>{collection.description}</p>}
                   {/* Optionally display item count or previews later */}

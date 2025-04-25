@@ -36,6 +36,7 @@ export interface Collection {
   description: string | null;
   isPublic: boolean;
   userId: string;
+  userSlug: string;
   createdAt: string; // Dates are often serialized as strings
   updatedAt: string; // Dates are often serialized as strings
   items?: CollectionItem[]; // Assuming backend won't include items by default for the list view

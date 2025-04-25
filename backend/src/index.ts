@@ -13,6 +13,7 @@ import authRoutes from "./routes/auth";
 import usersRoutes from "./routes/users";
 import { env } from "./env";
 import { getGoogleTokensForUser } from "./lib/google";
+import { RequestHandler } from "express";
 
 // User type definition for TypeScript since we can't import it directly from Prisma
 type User = {
@@ -70,44 +71,75 @@ passport.use(
     },
     async (_, __, profile, done) => {
       try {
-        const email = profile.emails?.[0].value!;
+        const email = profile.emails?.[0].value;
+        const googleIdFromProfile = profile.id;
 
-        // Check if a user with this Google ID already exists
-        let user = await prisma.user.findUnique({
-          where: { googleId: profile.id },
+        if (!email) {
+          return done(new Error("No email found in Google profile."));
+        }
+        // Keep basic logging
+        console.log(
+          `[Passport Strategy] Profile received: ID=${googleIdFromProfile}, Email=${email}`
+        );
+
+        // Check by Google ID
+        let userById = await prisma.user.findUnique({
+          where: { googleId: googleIdFromProfile },
         });
-
-        if (user) {
-          // If user exists, return it
-          return done(null, user);
+        if (userById) {
+          console.log(
+            `[Passport Strategy] Found user by Google ID: ${userById.id}`
+          );
+          return done(null, userById);
         }
 
-        // Check if a user with this email already exists
-        user = await prisma.user.findUnique({
-          where: { email },
+        // Check by Email
+        let userByEmail = await prisma.user.findUnique({
+          where: { email: email },
         });
-
-        if (user) {
-          // If user exists but doesn't have googleId, update it
-          if (!user.googleId) {
-            user = await prisma.user.update({
-              where: { id: user.id },
-              data: { googleId: profile.id },
-            });
+        if (userByEmail) {
+          console.log(
+            `[Passport Strategy] Found user by Email: ${userByEmail.id}`
+          );
+          // Link Google ID if missing
+          if (!userByEmail.googleId) {
+            console.log(
+              `[Passport Strategy] Linking Google ID ${googleIdFromProfile} to user ${userByEmail.id}`
+            );
+            try {
+              userByEmail = await prisma.user.update({
+                where: { id: userByEmail.id },
+                data: { googleId: googleIdFromProfile },
+              });
+            } catch (updateError) {
+              console.error(
+                `[Passport Strategy] Error linking Google ID:`,
+                updateError
+              );
+              // Proceed with user found by email even if linking failed
+            }
+          } else if (userByEmail.googleId !== googleIdFromProfile) {
+            console.warn(
+              `[Passport Strategy] User ${userByEmail.id} email ${email} matched, but Google ID differs.`
+            );
           }
-          return done(null, user);
+          return done(null, userByEmail);
         }
 
-        // Return a temporary user object for authentication
-        // The actual user will be created during registration
-        return done(null, {
+        // New User
+        console.log(
+          `[Passport Strategy] No existing user found. Returning temp user.`
+        );
+        const tempUser = {
           id: "temp",
           email,
           name: profile.displayName,
-          googleId: profile.id,
+          googleId: googleIdFromProfile,
           role: "USER",
-        } as User);
+        } as User;
+        return done(null, tempUser);
       } catch (error) {
+        console.error("[Passport Strategy] Error:", error);
         return done(error as Error);
       }
     }
@@ -126,31 +158,55 @@ app.get(
   })
 );
 
+// Define handler separately (optional, but keeps code cleaner)
+const googleCallbackHandler: RequestHandler = (req, res, next) => {
+  // Log the user object received from Passport *before* any checks
+  console.log(
+    "[Google Callback Handler] User object received from Passport:",
+    req.user
+  );
+
+  const user = req.user as User;
+  if (!user) {
+    console.error("Google callback missing user object!");
+    return res.redirect("/login?error=googleAuthFailed");
+  }
+  if (user.id === "temp") {
+    console.log(
+      "Google auth successful, but no WLM account linked. Redirecting to registration."
+    );
+    return res.redirect("/register?fromGoogle=true");
+  }
+  console.log(
+    `Google auth successful for existing WLM user: ${user.id} (${user.email}). Logging in.`
+  );
+  const token = jwt.sign(
+    { sub: user.id, email: user.email, role: user.role },
+    env.JWT_SECRET!,
+    { expiresIn: "7d" }
+  );
+  res.cookie("token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+  res.cookie("auth_success", "true", {
+    maxAge: 60 * 1000,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
+  res.redirect("/");
+};
+
+// @ts-ignore // Ignore persistent type error on this specific route definition
 app.get(
   "/api/auth/google/callback",
-  passport.authenticate("google", { session: false, failureRedirect: "/" }),
-  (req, res) => {
-    const user = req.user! as User;
-
-    // If it's a temporary user (no WatchLikeMe account yet)
-    if (user.id === "temp") {
-      // Redirect to frontend registration completion page
-      res.redirect("/complete-registration");
-      return;
-    }
-
-    // Otherwise proceed with normal login flow
-    const token = jwt.sign(
-      { sub: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET!,
-      { expiresIn: "7d" }
-    );
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-    });
-    res.redirect("/");
-  }
+  passport.authenticate("google", {
+    session: false,
+    failureRedirect: "/login?error=googleAuthFailed",
+  }),
+  googleCallbackHandler // Use the typed handler
 );
 
 app.get("/api/users/me", async (req, res) => {

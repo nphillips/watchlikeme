@@ -117,13 +117,20 @@ router.post(
           });
           channelIdToAdd = channel.id;
         } else if (itemType === "video") {
+          // Check for Google Auth BEFORE trying to use the API client
+          if (!authInfo?.oauth2Client) {
+            console.error(
+              "[Add Item] Cannot fetch YouTube details: User is not authenticated with Google."
+            );
+            throw new Error("GOOGLE_AUTH_REQUIRED");
+          }
+
           // Check if video already exists
           let video = await tx.video.findUnique({
             where: { youtubeId: youtubeId },
           });
 
           if (!video) {
-            // Video doesn't exist, need to find its channel and create both
             console.log(
               `[Add Item] Video ${youtubeId} not found locally. Fetching from YouTube API...`
             );
@@ -131,10 +138,10 @@ router.post(
             let videoChannelIdFromApi: string | null = null;
             let videoPublishedAt: Date | null = null;
             try {
+              // Use the guaranteed client here
               const videoResponse = await youtube.videos.list({
                 part: ["snippet"],
                 id: [youtubeId],
-                // Use non-null assertion after guard clause
                 auth: authInfo.oauth2Client,
               });
 
@@ -192,10 +199,13 @@ router.post(
                 `[Add Item] Fetching details for newly referenced channel ${videoChannelIdFromApi}`
               );
               try {
+                // Check for client again (though it should exist if we got here)
+                if (!authInfo?.oauth2Client)
+                  throw new Error("GOOGLE_AUTH_REQUIRED");
+                // Use the guaranteed client here
                 const channelResponse = await youtube.channels.list({
                   part: ["snippet"],
                   id: [videoChannelIdFromApi],
-                  // Use non-null assertion after guard clause
                   auth: authInfo.oauth2Client,
                 });
                 if (
@@ -302,13 +312,20 @@ router.post(
         `[Add Item] Error adding item to collection ${collectionSlug}:`,
         error
       );
-      // Catch the specific duplicate error
+      // Catch the specific Google Auth error
+      if (error instanceof Error && error.message === "GOOGLE_AUTH_REQUIRED") {
+        return res.status(403).json({
+          error:
+            "Google authentication is required to add YouTube videos directly.",
+          details: error.message,
+        });
+      }
+      // Catch other specific errors
       if (error instanceof Error && error.message === "DUPLICATE_ITEM") {
         return res
           .status(409)
           .json({ error: "Item already exists in this collection." });
       }
-      // Keep other specific error handlers
       if (
         error instanceof Error &&
         (error.message.includes("not found on YouTube") ||
@@ -338,28 +355,50 @@ router.post(
 );
 
 // --- Get Items and Details for a Collection ---
-router.get(
-  "/:collectionSlug/items", // Keep endpoint name for now, but it returns more
-  authenticateToken,
-  async (req, res) => {
-    const authInfo = req.watchLikeMeAuthInfo;
-    const { collectionSlug } = req.params;
+router.get("/:collectionSlug/items", authenticateToken, async (req, res) => {
+  const authInfo = req.watchLikeMeAuthInfo;
+  const { collectionSlug } = req.params;
 
-    if (!authInfo) {
-      return res.status(401).json({ error: "User not authenticated" });
-    }
+  if (!authInfo) {
+    // Even for public collections, we might need auth later for likes etc.
+    // For now, let's require auth to view any collection details via this endpoint.
+    // A separate public, unauthenticated endpoint could be made later if needed.
+    return res.status(401).json({ error: "User not authenticated" });
+  }
 
-    try {
-      // 1. Find the collection, ensuring ownership or public status
-      const collection = await prisma.collection.findUnique({
-        where: {
-          userId_slug: {
-            userId: authInfo.id, // Need user ID for potential ownership check
-            slug: collectionSlug,
-          },
+  try {
+    // 1. Try finding the collection owned by the current user
+    let collection = await prisma.collection.findUnique({
+      where: {
+        userId_slug: {
+          userId: authInfo.id,
+          slug: collectionSlug,
         },
-        // Include items directly in this query
+      },
+      include: {
+        // Include items only if found this way
+        items: {
+          include: {
+            channel: true,
+            video: { include: { channel: true } },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
+
+    // 2. If not found for the current user, check if a public collection exists with that slug
+    if (!collection) {
+      console.log(
+        `[Get Collection] Collection ${collectionSlug} not found for user ${authInfo.id}. Checking public.`
+      );
+      collection = await prisma.collection.findFirst({
+        where: {
+          slug: collectionSlug,
+          isPublic: true, // Must be public
+        },
         include: {
+          // Include items if found this way
           items: {
             include: {
               channel: true,
@@ -369,59 +408,35 @@ router.get(
           },
         },
       });
-
-      // Check if collection exists AND if user is authorized to view it
-      if (!collection) {
-        // Maybe it exists but is private and owned by someone else?
-        // Or it's public?
-        // Let's try finding public one if the specific user one failed
-        const publicCollection = await prisma.collection.findFirst({
-          where: {
-            slug: collectionSlug,
-            isPublic: true,
-          },
-          include: {
-            items: {
-              include: {
-                channel: true,
-                video: { include: { channel: true } },
-              },
-              orderBy: { createdAt: "asc" },
-            },
-          },
-        });
-
-        if (!publicCollection) {
-          console.log(
-            `[Get Items] Collection ${collectionSlug} not found or not accessible by user ${authInfo.id}`
-          );
-          return res
-            .status(404)
-            .json({ error: "Collection not found or not accessible" });
-        }
-        // If found public collection, return that
-        console.log(`[Get Items] Found public collection ${collectionSlug}`);
-        // We don't need the user relation here, just the collection data and items
-        const { items, ...collectionData } = publicCollection;
-        return res.json({ collection: collectionData, items: items || [] });
-      }
-
-      // If we found the collection via userId_slug, it means the user owns it
-      // (regardless of public status)
-      console.log(
-        `[Get Items] Found collection ${collectionSlug} owned by user ${authInfo.id}`
-      );
-      const { items, ...collectionData } = collection;
-      return res.json({ collection: collectionData, items: items || [] });
-    } catch (error) {
-      console.error(
-        `Error fetching items for collection ${collectionSlug}:`,
-        error
-      );
-      res.status(500).json({ error: "Failed to fetch collection items" });
     }
+
+    // 3. If still not found (neither owned nor public), return 404
+    if (!collection) {
+      console.log(
+        `[Get Collection] Collection ${collectionSlug} not found or is private and not owned by user ${authInfo.id}`
+      );
+      return res
+        .status(404)
+        .json({ error: "Collection not found or not accessible" });
+    }
+
+    // 4. If found (either owned or public), return it
+    console.log(
+      `[Get Collection] Returning collection ${collection.id} (${collection.name}) for user ${authInfo.id}`
+    );
+    // Ensure items is always an array, even if includes weren't run or returned null
+    const items = collection.items || [];
+    // Remove items from the main collection object before sending
+    const { items: _, ...collectionData } = collection;
+    return res.json({ collection: collectionData, items: items });
+  } catch (error) {
+    console.error(
+      `Error fetching data for collection ${collectionSlug}:`,
+      error
+    );
+    res.status(500).json({ error: "Failed to fetch collection data" });
   }
-);
+});
 
 // Collection CRUD operations
 router.post("/", (req, res) => {

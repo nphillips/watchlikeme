@@ -50,4 +50,6 @@ This roadmap outlines the next phases of development, focusing on delivering cor
 
 ## Pending Issues
 
-- Fix authentication forwarding for `GET /api/channels` called from the frontend route handler. (Needed for Command Palette subscriptions).
+- **Hybrid User Google Sign-In:** Existing users with both password and Google ID are incorrectly redirected to /register instead of being logged in when using "Sign in with Google". Passport strategy needs further investigation.
+- **`/api/channels` Auth Forwarding:** Frontend route `/api/channels` fails its _initial_ call to the backend equivalent due to auth issues (returning `No access token found`), though it recovers via fallback. Causes noise in logs and prevents backend caching for subscriptions.
+- **(Minor) Type Error:** Persistent type error on `app.use(passport.initialize())` in `backend/src/index.ts`.

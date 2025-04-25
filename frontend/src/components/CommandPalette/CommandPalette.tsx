@@ -29,6 +29,7 @@ interface Channel {
 
 interface CommandPaletteProps {
   onAddItem: (item: any) => void;
+  existingItemYoutubeIds?: Set<string> | null;
 }
 
 const fetcher = async (url: string) => {
@@ -40,7 +41,10 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
-export function CommandPalette({ onAddItem }: CommandPaletteProps) {
+export function CommandPalette({
+  onAddItem,
+  existingItemYoutubeIds,
+}: CommandPaletteProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
@@ -102,24 +106,29 @@ export function CommandPalette({ onAddItem }: CommandPaletteProps) {
 
             {query === "" && (
               <CommandGroup heading="Your Subscriptions">
-                {subs?.slice(0, 10).map((ch) => (
-                  <CommandItem key={ch.id}>
-                    <CpItem
-                      id={ch.id}
-                      title={ch.title}
-                      thumbnailUrl={ch.thumbnailUrl}
-                      subscriberCount={ch.subscriberCount}
-                    >
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => addItem(ch)}
+                {subs?.slice(0, 10).map((ch) => {
+                  const isAdded = existingItemYoutubeIds?.has(ch.id) ?? false;
+                  return (
+                    <CommandItem key={ch.id}>
+                      <CpItem
+                        id={ch.id}
+                        title={ch.title}
+                        thumbnailUrl={ch.thumbnailUrl}
+                        subscriberCount={ch.subscriberCount}
+                        isAdded={isAdded}
                       >
-                        +Add
-                      </Button>
-                    </CpItem>
-                  </CommandItem>
-                ))}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => addItem(ch)}
+                          disabled={isAdded}
+                        >
+                          {isAdded ? "Added" : "+Add"}
+                        </Button>
+                      </CpItem>
+                    </CommandItem>
+                  );
+                })}
               </CommandGroup>
             )}
 
@@ -133,12 +142,17 @@ export function CommandPalette({ onAddItem }: CommandPaletteProps) {
                 {Array.isArray(ytResults) &&
                   ytResults.map((item) => {
                     const isVideo = Boolean(item.id.videoId);
-                    const id = isVideo ? item.id.videoId : item.id.channelId;
+                    const youtubeId = isVideo
+                      ? item.id.videoId
+                      : item.id.channelId;
                     const title = item.snippet.title;
                     const thumbnail = item.snippet.thumbnails.default.url;
 
+                    const isAdded =
+                      existingItemYoutubeIds?.has(youtubeId) ?? false;
+
                     return (
-                      <CommandItem key={id}>
+                      <CommandItem key={youtubeId}>
                         <div className="flex w-full items-center justify-between">
                           <div className="flex items-center space-x-3">
                             <img
@@ -152,8 +166,9 @@ export function CommandPalette({ onAddItem }: CommandPaletteProps) {
                             size="sm"
                             variant="ghost"
                             onClick={() => addItem(item)}
+                            disabled={isAdded}
                           >
-                            +Add
+                            {isAdded ? "Added" : "+Add"}
                           </Button>
                         </div>
                       </CommandItem>

@@ -12,7 +12,7 @@ import {
 } from "@/lib/api/collections";
 import { PopulatedCollectionItem, AddItemRequestBody } from "@/interfaces";
 import { useParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import useSWR, { mutate } from "swr";
 import { X } from "lucide-react";
 
@@ -64,9 +64,23 @@ export default function CollectionPage() {
     }
   );
 
+  // Create a memoized Set of existing YouTube IDs in this collection
+  const existingItemYoutubeIds = useMemo(() => {
+    const idSet = new Set<string>();
+    items.forEach((item) => {
+      if (item.channel?.youtubeId) {
+        idSet.add(item.channel.youtubeId);
+      } else if (item.video?.youtubeId) {
+        idSet.add(item.video.youtubeId);
+      }
+    });
+    console.log("[CollectionPage] Recalculated existingItemYoutubeIds:", idSet);
+    return idSet;
+  }, [items]); // Recalculate only when items array changes
+
   // Add this useEffect to log items when they change
   useEffect(() => {
-    console.log("[CollectionPage] Items state updated:", items);
+    console.log("[CollectionPage] Items state updated (raw SWR data):", items);
   }, [items]); // Dependency array watches the items data from SWR
 
   // State for Add Item operation feedback
@@ -179,7 +193,10 @@ export default function CollectionPage() {
         {decodeURIComponent(collectionSlug as string)}
       </h1>
       <div className="my-4">
-        <CommandPalette onAddItem={handleAddItem} />
+        <CommandPalette
+          onAddItem={handleAddItem}
+          existingItemYoutubeIds={existingItemYoutubeIds}
+        />
         {isAdding && (
           <p className="text-sm text-blue-500 mt-2">Adding item...</p>
         )}

@@ -10,9 +10,16 @@ interface CpItemProps {
   thumbnailUrl: string;
   subscriberCount: number;
   children?: React.ReactNode;
+  isAdded?: boolean;
 }
 
-export function CpItem({ id, title, thumbnailUrl, children }: CpItemProps) {
+export function CpItem({
+  id,
+  title,
+  thumbnailUrl,
+  children,
+  isAdded,
+}: CpItemProps) {
   return (
     <div
       className={cn(

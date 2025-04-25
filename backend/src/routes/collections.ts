@@ -419,25 +419,76 @@ router.get("/:userSlug/:collectionSlug", (req, res) => {
   res.json({ message: "Public collection endpoint" });
 });
 
-// DELETE route placeholder
+// --- Delete Item from Collection ---
+// Replace the placeholder DELETE route with this implementation
 router.delete(
-  "/:collectionSlug/items/:itemId",
+  "/:collectionSlug/items/:collectionItemId", // Renamed param for clarity
   authenticateToken,
-  async (
-    req: Request<{ collectionSlug: string; itemId: string }>,
-    res: Response
-  ) => {
-    // TODO: Implement deletion logic - ensure item belongs to collection owned by user
-    const authInfo = req.watchLikeMeAuthInfo; // Use the specific property
+  async (req, res) => {
+    const authInfo = req.watchLikeMeAuthInfo;
+    const { collectionSlug, collectionItemId } = req.params;
+
     if (!authInfo) {
       return res.status(401).json({ error: "User not authenticated" });
     }
-    console.log(
-      `User ${authInfo.id} attempting to delete item ${req.params.itemId} from ${req.params.collectionSlug}`
-    );
-    res
-      .status(501)
-      .json({ message: "Not Implemented: Collection item deletion" });
+
+    if (!collectionSlug || !collectionItemId) {
+      return res
+        .status(400)
+        .json({ error: "Missing collection slug or item ID" });
+    }
+
+    try {
+      // 1. Find the collection item ensuring it belongs to the user's collection
+      const itemToDelete = await prisma.collectionItem.findFirst({
+        where: {
+          // Item ID must match
+          id: collectionItemId,
+          // Collection must match the slug and belong to the authenticated user
+          collection: {
+            slug: collectionSlug,
+            userId: authInfo.id,
+          },
+        },
+      });
+
+      // 2. Check if item was found and belongs to the user/collection
+      if (!itemToDelete) {
+        console.log(
+          `[Delete Item] Item ${collectionItemId} not found in collection ${collectionSlug} for user ${authInfo.id}`
+        );
+        return res.status(404).json({
+          error: "Collection item not found or you do not own this collection",
+        });
+      }
+
+      // 3. Delete the item
+      await prisma.collectionItem.delete({
+        where: {
+          id: itemToDelete.id, // Use the found item ID for deletion
+        },
+      });
+
+      console.log(
+        `[Delete Item] Deleted item ${itemToDelete.id} from collection ${collectionSlug} for user ${authInfo.id}`
+      );
+
+      // 4. Return success (204 No Content is appropriate for DELETE)
+      res.status(204).send();
+    } catch (error) {
+      console.error(
+        `[Delete Item] Error deleting item ${collectionItemId} from collection ${collectionSlug}:`,
+        error
+      );
+      // Handle potential Prisma errors (e.g., record not found if validation failed somehow)
+      if (
+        error instanceof Error &&
+        error.message.includes("Record to delete does not exist")
+      ) {
+        return res.status(404).json({ error: "Collection item not found." });
+      }
+      res.status(500).json({ error: "Failed to delete collection item" });
+    }
   }
 );
 

@@ -3,12 +3,18 @@
 import { CommandPalette } from "@/components/CommandPalette";
 import Nav from "@/components/Nav";
 import { YouTubeThumbnail } from "@/components/YouTubeThumbnail";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { getCollectionItems, addCollectionItem } from "@/lib/api/collections";
+import {
+  getCollectionItems,
+  addCollectionItem,
+  removeCollectionItem,
+} from "@/lib/api/collections";
 import { PopulatedCollectionItem, AddItemRequestBody } from "@/interfaces";
 import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import useSWR, { mutate } from "swr";
+import { X } from "lucide-react";
 
 // SWR fetcher function
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -66,6 +72,8 @@ export default function CollectionPage() {
   // State for Add Item operation feedback
   const [isAdding, setIsAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+  const [removingItemId, setRemovingItemId] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
 
   // Function to handle adding an item
   const handleAddItem = async (item: PaletteItem) => {
@@ -133,6 +141,28 @@ export default function CollectionPage() {
     }
   };
 
+  // Function to handle removing an item
+  const handleRemoveItem = async (collectionItemId: string) => {
+    if (!collectionSlug || typeof collectionSlug !== "string") return;
+
+    setRemovingItemId(collectionItemId);
+    setRemoveError(null);
+
+    try {
+      await removeCollectionItem(collectionSlug, collectionItemId);
+      console.log(`Item ${collectionItemId} removed, revalidating list...`);
+      mutateItems();
+    } catch (err) {
+      console.error(`Error removing item ${collectionItemId}:`, err);
+      setRemoveError(
+        err instanceof Error ? err.message : "Failed to remove item"
+      );
+      setTimeout(() => setRemoveError(null), 5000);
+    } finally {
+      setRemovingItemId(null);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen p-4 flex items-center justify-center">
@@ -155,6 +185,9 @@ export default function CollectionPage() {
         )}
         {addError && (
           <p className="text-sm text-red-500 mt-2">Error: {addError}</p>
+        )}
+        {removeError && (
+          <p className="text-sm text-red-500 mt-2">Error: {removeError}</p>
         )}
       </div>
       <h2 className="text-lg font-bold my-4">Items in Collection</h2>
@@ -186,6 +219,7 @@ export default function CollectionPage() {
             const displayItem = item.channel || item.video;
             const channelInfo = item.channel || item.video?.channel;
             const isVideo = !!item.video;
+            const isCurrentlyRemoving = removingItemId === item.id;
 
             if (!displayItem || !channelInfo) {
               console.warn(
@@ -198,7 +232,9 @@ export default function CollectionPage() {
             return (
               <li
                 key={item.id}
-                className="flex items-center gap-3 p-2 border rounded-md"
+                className={`flex items-center gap-3 p-2 border rounded-md ${
+                  isCurrentlyRemoving ? "opacity-50" : ""
+                }`}
               >
                 {displayItem.thumbnail ? (
                   <YouTubeThumbnail
@@ -221,6 +257,19 @@ export default function CollectionPage() {
                     </span>
                   )}
                 </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleRemoveItem(item.id)}
+                  disabled={isCurrentlyRemoving}
+                  aria-label="Remove item"
+                >
+                  {isCurrentlyRemoving ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-gray-500"></div>
+                  ) : (
+                    <X className="h-4 w-4" />
+                  )}
+                </Button>
               </li>
             );
           })}

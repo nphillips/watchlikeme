@@ -108,3 +108,47 @@ export async function addCollectionItem(
   console.log(`[API Client] Successfully added item:`, newItem);
   return newItem;
 }
+
+/**
+ * Removes an item from a specific collection.
+ * @param collectionSlug The slug of the collection.
+ * @param collectionItemId The ID of the CollectionItem record to remove.
+ */
+export async function removeCollectionItem(
+  collectionSlug: string,
+  collectionItemId: string
+): Promise<void> {
+  // DELETE requests often don't return a body on success (204)
+  const path = `/api/collections/${collectionSlug}/items/${collectionItemId}`;
+  console.log(`[API Client] Removing item via: DELETE ${path}`);
+
+  const response = await backendFetch(path, {
+    method: "DELETE",
+    // No body needed for DELETE
+  });
+
+  console.log(`[API Client] DELETE ${path} status: ${response.status}`);
+
+  // Check for 204 No Content or other success statuses if applicable
+  if (response.status === 204) {
+    console.log(`[API Client] Successfully removed item ${collectionItemId}.`);
+    return; // Success
+  }
+
+  // Handle errors
+  let errorBody = "Failed to remove item from collection";
+  try {
+    // Try to parse error body even if status isn't 204
+    if (response.body) {
+      // Check if there is a body to parse
+      const body = await response.json();
+      errorBody = body.error || body.message || errorBody;
+      console.error("[API Client] Error response body:", body);
+    } else {
+      console.log("[API Client] No error body returned.");
+    }
+  } catch (e) {
+    console.error("[API Client] Failed to parse error response body");
+  }
+  throw new Error(`${errorBody} (Status: ${response.status})`);
+}

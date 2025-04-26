@@ -9,7 +9,7 @@ import {
   getCollectionItems,
   addCollectionItem,
   removeCollectionItem,
-  updateCollectionNote,
+  updateCollectionDetails,
   likeCollection,
   unlikeCollection,
 } from "@/lib/api/collections";
@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 // SWR fetcher function
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -116,10 +117,11 @@ export default function CollectionPage() {
   }, [items]); // Dependency is now the extracted items array
 
   // --- State for Editing Note ---
-  const [isEditingNote, setIsEditingNote] = useState(false); // Dialog open state
-  const [editableNote, setEditableNote] = useState<string>(""); // Note content in textarea
-  const [isSavingNote, setIsSavingNote] = useState(false);
-  const [saveNoteError, setSaveNoteError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editableNote, setEditableNote] = useState<string>("");
+  const [editableIsPublic, setEditableIsPublic] = useState<boolean>(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Update editableNote when collection data loads or changes
   useEffect(() => {
@@ -128,7 +130,8 @@ export default function CollectionPage() {
     } else {
       setEditableNote(""); // Reset if note is null or collection is null
     }
-  }, [collection?.note]);
+    setEditableIsPublic(collection?.isPublic ?? true);
+  }, [collection?.note, collection?.isPublic]);
 
   // --- State for Liking ---
   const [isLiking, setIsLiking] = useState(false);
@@ -220,32 +223,37 @@ export default function CollectionPage() {
   };
 
   // Handler to open the edit dialog
-  const handleOpenEditNote = () => {
-    setEditableNote(collection?.note || ""); // Reset to current note when opening
-    setSaveNoteError(null); // Clear previous errors
-    setIsEditingNote(true);
+  const handleOpenEditDialog = () => {
+    setEditableNote(collection?.note || "");
+    setEditableIsPublic(collection?.isPublic ?? true);
+    setSaveError(null);
+    setIsEditing(true);
   };
 
   // Handler to save the edited note
-  const handleSaveNote = async () => {
+  const handleSaveChanges = async () => {
     if (!collectionSlug || typeof collectionSlug !== "string") return;
 
-    setIsSavingNote(true);
-    setSaveNoteError(null);
+    setIsSaving(true);
+    setSaveError(null);
+
+    const updates: { note?: string | null; isPublic?: boolean } = {
+      note: editableNote.trim(),
+      isPublic: editableIsPublic,
+    };
 
     try {
-      await updateCollectionNote(collectionSlug, editableNote.trim()); // Pass trimmed note
-      console.log("Note updated successfully, revalidating...");
-      mutateItems(); // Revalidate SWR data to get updated collection details
-      setIsEditingNote(false); // Close dialog on success
+      await updateCollectionDetails(collectionSlug, updates);
+      console.log("Collection details updated successfully, revalidating...");
+      mutateItems();
+      setIsEditing(false);
     } catch (err) {
-      console.error("Error updating note:", err);
-      setSaveNoteError(
-        err instanceof Error ? err.message : "Failed to save note"
+      console.error("Error updating collection details:", err);
+      setSaveError(
+        err instanceof Error ? err.message : "Failed to save changes"
       );
-      // Keep dialog open on error
     } finally {
-      setIsSavingNote(false);
+      setIsSaving(false);
     }
   };
 
@@ -389,8 +397,8 @@ export default function CollectionPage() {
 
       {isOwner && (
         <div className="mb-4">
-          <Button variant="outline" size="sm" onClick={handleOpenEditNote}>
-            Edit Note
+          <Button variant="outline" size="sm" onClick={handleOpenEditDialog}>
+            Edit Details
           </Button>
         </div>
       )}
@@ -498,12 +506,12 @@ export default function CollectionPage() {
         </ul>
       )}
 
-      <Dialog open={isEditingNote} onOpenChange={setIsEditingNote}>
+      <Dialog open={isEditing} onOpenChange={setIsEditing}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Edit Note</DialogTitle>
+            <DialogTitle>Edit Collection Details</DialogTitle>
             <DialogDescription>
-              Add or update the notes for this collection.
+              Update the notes and visibility for this collection.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -519,26 +527,44 @@ export default function CollectionPage() {
                 className="col-span-3 h-32"
               />
             </div>
-            {saveNoteError && (
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="public-switch" className="text-right">
+                Public
+              </Label>
+              <div className="col-span-3 flex items-center space-x-2">
+                <Switch
+                  id="public-switch"
+                  checked={editableIsPublic}
+                  onCheckedChange={setEditableIsPublic}
+                  disabled={collectionSlug === "profile"}
+                />
+                <span className="text-sm text-muted-foreground">
+                  {editableIsPublic
+                    ? "Visible to everyone."
+                    : "Only visible to you."}
+                </span>
+              </div>
+            </div>
+            {saveError && (
               <p className="text-sm text-red-500 col-span-4 text-center">
-                Error: {saveNoteError}
+                Error: {saveError}
               </p>
             )}
           </div>
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setIsEditingNote(false)}
-              disabled={isSavingNote}
+              onClick={() => setIsEditing(false)}
+              disabled={isSaving}
             >
               Cancel
             </Button>
             <Button
               type="button"
-              onClick={handleSaveNote}
-              disabled={isSavingNote}
+              onClick={handleSaveChanges}
+              disabled={isSaving}
             >
-              {isSavingNote ? "Saving..." : "Save Changes"}
+              {isSaving ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>

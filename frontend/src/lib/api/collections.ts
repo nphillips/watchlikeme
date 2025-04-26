@@ -186,27 +186,44 @@ export async function removeCollectionItem(
 }
 
 /**
- * Updates the note for a specific collection.
+ * Updates details for a specific collection (note and/or isPublic status).
  * @param collectionSlug The slug of the collection.
- * @param note The new note content (string or null to clear).
+ * @param updates An object containing the fields to update (e.g., { note: string | null, isPublic: boolean }).
  */
-export async function updateCollectionNote(
+export async function updateCollectionDetails(
   collectionSlug: string,
-  note: string | null
+  updates: { note?: string | null; isPublic?: boolean } // Accept object with optional fields
 ): Promise<Collection> {
   const path = `/api/collections/${collectionSlug}`;
-  console.log(`[API Client] Updating note for: ${path} via PUT`);
+  console.log(`[API Client] Updating details for: ${path} via PUT`, updates);
+
+  // Ensure we only send fields that are actually provided
+  const body: { note?: string | null; isPublic?: boolean } = {};
+  if (updates.note !== undefined) {
+    body.note = updates.note;
+  }
+  if (updates.isPublic !== undefined) {
+    body.isPublic = updates.isPublic;
+  }
+
+  if (Object.keys(body).length === 0) {
+    console.warn(
+      "[API Client] updateCollectionDetails called with no fields to update."
+    );
+    // Optionally throw an error or return early depending on desired behavior
+    // For now, let's proceed, backend will validate if needed.
+  }
 
   const response = await backendFetch(path, {
     method: "PUT",
     headers: {},
-    body: JSON.stringify({ note: note }),
+    body: JSON.stringify(body), // Send only the provided updates
   });
 
   console.log(`[API Client] PUT ${path} status: ${response.status}`);
 
   if (!response.ok) {
-    let errorBody = `Failed to update note: ${response.statusText}`;
+    let errorBody = `Failed to update collection details: ${response.statusText}`;
     const contentType = response.headers.get("content-type");
     try {
       if (contentType && contentType.includes("application/json")) {
@@ -217,10 +234,6 @@ export async function updateCollectionNote(
         const textBody = await response.text();
         if (textBody) {
           errorBody = textBody;
-          console.error(
-            "[API Client] Error response body (non-JSON):",
-            textBody
-          );
         } else {
           console.log("[API Client] No error body returned.");
         }
@@ -233,7 +246,7 @@ export async function updateCollectionNote(
 
   const updatedCollection: Collection = await response.json();
   console.log(
-    `[API Client] Successfully updated collection note:`,
+    `[API Client] Successfully updated collection details:`,
     updatedCollection
   );
   return updatedCollection;

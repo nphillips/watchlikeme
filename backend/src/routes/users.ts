@@ -1,5 +1,5 @@
 import express from "express";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { env } from "../env";
@@ -347,5 +347,87 @@ router.delete("/me/google-tokens", authenticateToken, async (req, res) => {
     res.status(500).json({ error: "Failed to unlink Google account" });
   }
 });
+
+// === Public Profile Collection Endpoint ===
+router.get(
+  "/:userSlug/collections/:collectionSlug",
+  // No authentication middleware needed for public view
+  async (req, res) => {
+    const { userSlug, collectionSlug } = req.params;
+
+    console.log(
+      `[Public Collection] Attempting fetch for User: ${userSlug}, Collection: ${collectionSlug}`
+    );
+
+    // Define includes needed for response
+    const includeArgs = {
+      _count: { select: { likes: true } },
+      // No user-specific like check needed here
+      items: {
+        include: {
+          channel: true,
+          video: { include: { channel: true } },
+        },
+        orderBy: { createdAt: Prisma.SortOrder.asc },
+      },
+    };
+
+    try {
+      // 1. Find the user by username
+      const user = await prisma.user.findUnique({
+        where: { username: userSlug },
+        select: { id: true }, // Only need ID
+      });
+
+      if (!user) {
+        console.log(`[Public Collection] User not found: ${userSlug}`);
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // 2. Find the specific collection for that user, ensuring it's public
+      const collectionResult = await prisma.collection.findFirst({
+        where: {
+          userId: user.id,
+          slug: collectionSlug,
+          isPublic: true, // MUST be public for this endpoint
+        },
+        include: includeArgs,
+      });
+
+      // 3. Handle collection not found or not public
+      if (!collectionResult) {
+        console.log(
+          `[Public Collection] Public collection '${collectionSlug}' not found for user ${userSlug}`
+        );
+        return res.status(404).json({ error: "Public collection not found" });
+      }
+
+      // 4. Process and return data
+      console.log(
+        `[Public Collection] Returning public collection ${collectionResult.id} (${collectionResult.name})`
+      );
+
+      const items = collectionResult.items ?? [];
+      const likeCount = (collectionResult as any)._count?.likes ?? 0;
+      // No currentUserHasLiked for public view
+      const { items: _, _count: ___, ...collectionData } = collectionResult;
+
+      return res.json({
+        collection: {
+          ...collectionData,
+          likeCount,
+          // currentUserHasLiked will be undefined here
+        },
+        items: items,
+      });
+    } catch (error) {
+      console.error(
+        `[Public Collection] Error fetching collection ${collectionSlug} for user ${userSlug}:`,
+        error
+      );
+      res.status(500).json({ error: "Failed to fetch public collection data" });
+    }
+  }
+);
 
 export default router;

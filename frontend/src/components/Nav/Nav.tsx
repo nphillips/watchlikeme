@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { removeCookie } from "@/lib/cookies";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
+import { ModeToggle } from "../mode-toggle";
 
 const Nav = () => {
   const { isAuthenticated, user, loading, handleLinkGoogle } = useAuth();
@@ -91,6 +92,9 @@ const Nav = () => {
                       Sign Out
                     </Button>
                   </div>
+                  <div className="ml-2">
+                    <ModeToggle />
+                  </div>
                 </div>
               </div>
             </div>
@@ -108,6 +112,9 @@ const Nav = () => {
               >
                 Register
               </a>
+              <div className="ml-2">
+                <ModeToggle />
+              </div>
             </div>
           )}
         </div>

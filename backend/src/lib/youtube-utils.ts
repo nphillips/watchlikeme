@@ -35,7 +35,10 @@ export async function fetchChannelDetails(
         const channelDetails = response.data.items.map((channel) => ({
           youtubeId: channel.id,
           title: channel.snippet?.title,
-          thumbnail: channel.snippet?.thumbnails?.default?.url,
+          thumbnail:
+            channel.snippet?.thumbnails?.high?.url ||
+            channel.snippet?.thumbnails?.medium?.url ||
+            channel.snippet?.thumbnails?.default?.url,
           subscriberCount: parseInt(
             channel.statistics?.subscriberCount || "0",
             10

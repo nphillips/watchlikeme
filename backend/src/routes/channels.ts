@@ -1,7 +1,10 @@
 import express, { Request, Response, Router } from "express";
 import { authenticateToken } from "../middleware/auth";
 import { setUserCredentials } from "../lib/youtube";
-import { updateSubscriptionDetails } from "../lib/youtube-utils";
+import {
+  updateSubscriptionDetails,
+  fetchChannelDetails,
+} from "../lib/youtube-utils";
 import { prisma } from "../lib/prisma";
 import { google } from "googleapis";
 
@@ -66,17 +69,32 @@ router.get("/", authenticateToken, async (req, res: Response) => {
         return res.json([]);
       }
 
-      const channels = response.data.items.map((item) => ({
-        youtubeId: item.snippet?.resourceId?.channelId,
-        title: item.snippet?.title,
-        thumbnail: item.snippet?.thumbnails?.default?.url,
-        subscriberCount: 0,
-      }));
+      const channelIds = response.data.items
+        .map((item) => item.snippet?.resourceId?.channelId)
+        .filter((id): id is string => typeof id === "string");
 
-      console.log(`Processing ${channels.length} channels`);
+      if (!channelIds.length) {
+        console.log(
+          "[Channels Route] No valid channel IDs found in subscriptions"
+        );
+        return res.json([]);
+      }
+
+      console.log(
+        `[Channels Route] Fetching details for ${channelIds.length} channels...`
+      );
+      const detailedChannels = await fetchChannelDetails(
+        channelIds,
+        accessToken
+      );
+
+      console.log(
+        `[Channels Route] Received details for ${detailedChannels.length} channels`
+      );
 
       if (userId) {
-        for (const channelData of channels) {
+        const savedChannelData = [];
+        for (const channelData of detailedChannels) {
           if (!channelData.youtubeId || !channelData.title) continue;
 
           const channel = await prisma.channel.upsert({
@@ -84,13 +102,19 @@ router.get("/", authenticateToken, async (req, res: Response) => {
             update: {
               title: channelData.title,
               thumbnail: channelData.thumbnail || null,
-              subscriberCount: channelData.subscriberCount,
+              subscriberCount: channelData.subscriberCount || 0,
+              thumbnailUpdatedAt: channelData.thumbnail
+                ? new Date()
+                : undefined,
             },
             create: {
               youtubeId: channelData.youtubeId,
               title: channelData.title,
               thumbnail: channelData.thumbnail || null,
-              subscriberCount: channelData.subscriberCount,
+              subscriberCount: channelData.subscriberCount || 0,
+              thumbnailUpdatedAt: channelData.thumbnail
+                ? new Date()
+                : undefined,
             },
           });
 
@@ -102,23 +126,28 @@ router.get("/", authenticateToken, async (req, res: Response) => {
               },
             },
           });
+          savedChannelData.push(channel);
         }
 
         console.log(
-          `Saved ${channels.length} channels to database for user ${userId}`
+          `Saved/Updated ${savedChannelData.length} channels to database for user ${userId}`
         );
       } else {
-        console.log("No user ID found in request, skipping database mirroring");
+        console.log(
+          "[Channels Route] No user ID found, skipping database mirroring"
+        );
       }
 
-      const formattedChannels = channels.map((channel) => ({
+      const formattedChannels = detailedChannels.map((channel) => ({
         id: channel.youtubeId,
         title: channel.title,
         thumbnailUrl: channel.thumbnail,
         subscriberCount: channel.subscriberCount || 0,
       }));
 
-      console.log(`Returning ${formattedChannels.length} channels`);
+      console.log(
+        `[Channels Route] Returning ${formattedChannels.length} formatted channels`
+      );
       res.json(formattedChannels);
     } catch (youtubeError) {
       console.error("YouTube API error:", {

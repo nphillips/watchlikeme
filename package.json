@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@netlify/functions": "^3.1.2",
-    "googleapis": "^148.0.0"
+    "googleapis": "^148.0.0",
+    "next-themes": "^0.4.6"
   }
 }

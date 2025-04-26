@@ -9,13 +9,15 @@ interface YouTubeThumbnailProps {
   url: string | null | undefined;
   alt: string;
   className?: string;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl";
 }
 
 const sizeClasses = {
   sm: "h-8 w-8",
   md: "h-10 w-10",
   lg: "h-12 w-12",
+  xl: "h-24 w-24",
+  "2xl": "h-[136px] w-[136px]",
 };
 
 const fallbackImage = "/images/placeholder-image.svg";
@@ -62,7 +64,7 @@ export function YouTubeThumbnail({
           fill
           sizes={effectiveSize.split(" ")[1]}
           className={cn(
-            "rounded object-cover transition-opacity duration-300",
+            "rounded-full object-cover transition-opacity duration-300 ",
             isImageLoaded ? "opacity-100" : "opacity-0"
           )}
           onLoad={() => {

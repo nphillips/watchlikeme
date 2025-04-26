@@ -509,9 +509,9 @@ export default function CollectionPage() {
       </div>
 
       {(collection.note || collection.description) && (
-        <div className="mb-4 p-3 bg-gray-50 rounded border border-gray-200">
+        <div className="mb-4 text-gray-700 p-3 bg-gray-50 dark:bg-gray-900 dark:text-white rounded border border-gray-200 dark:border-gray-700">
           <h3 className="font-semibold mb-1">Notes:</h3>
-          <p className="text-gray-700 whitespace-pre-wrap">
+          <p className=" whitespace-pre-wrap">
             {collection.note || collection.description}
           </p>
         </div>
@@ -554,7 +554,7 @@ export default function CollectionPage() {
       )}
 
       {items.length > 0 && (
-        <ul className="space-y-2">
+        <ul className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] [grid-template-rows:repeat(2,min-content)] gap-2">
           {items.map((item) => {
             const displayItem = item.channel || item.video;
             const channelInfo = item.channel || item.video?.channel;
@@ -571,7 +571,7 @@ export default function CollectionPage() {
             return (
               <li
                 key={item.id}
-                className={`flex items-center gap-3 p-2 border rounded-md ${
+                className={`flex flex-col gap-3 p-2 border rounded-md justify-center items-center ${
                   isCurrentlyRemoving ? "opacity-50" : ""
                 }`}
               >
@@ -579,10 +579,10 @@ export default function CollectionPage() {
                   <YouTubeThumbnail
                     url={displayItem.thumbnail}
                     alt={displayItem.title}
-                    size="sm"
+                    size="2xl"
                   />
                 ) : (
-                  <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center text-gray-400 text-xs">
+                  <div className="h-24 w-24 bg-gray-200 rounded flex items-center justify-center text-gray-400 text-xs">
                     No Img
                   </div>
                 )}
@@ -592,7 +592,7 @@ export default function CollectionPage() {
                       href={`https://www.youtube.com/channel/${item.channel.youtubeId}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-medium line-clamp-1 hover:underline text-blue-600"
+                      className="font-medium line-clamp-1 hover:underline text-center "
                     >
                       {displayItem.title}
                     </a>

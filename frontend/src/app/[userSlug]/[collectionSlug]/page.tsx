@@ -440,11 +440,8 @@ export default function CollectionPage() {
               Shared with: {sharedWithList.map((u) => u.username).join(", ")}
             </span>
           )}
-          {isOwner && sharedWithList.length === 0 && !collection.isPublic && (
+          {isOwner && sharedWithList.length === 0 && (
             <span className="text-sm text-gray-500">Private (Not shared)</span>
-          )}
-          {isOwner && collection.isPublic && (
-            <span className="text-sm text-gray-500">Public</span>
           )}
         </div>
         {/* Like Button Area */}

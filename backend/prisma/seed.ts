@@ -194,6 +194,21 @@ async function main() {
     },
   });
 
+  // Add Profile Collection
+  await prisma.collection.create({
+    data: {
+      slug: "profile",
+      name: `${googleFirst.username}'s Profile Collection`,
+      description: "Public items shared by this user.",
+      note: "Welcome to my public collection!",
+      isPublic: true,
+      userId: googleFirst.id,
+      items: {
+        create: [{ channelId: verge.id }],
+      },
+    },
+  });
+
   // —— Create collections for Bob ——
   await prisma.collection.create({
     data: {
@@ -217,6 +232,20 @@ async function main() {
       userId: bob.id,
       items: {
         create: [{ channelId: verge.id }],
+      },
+    },
+  });
+
+  // Add Profile Collection
+  await prisma.collection.create({
+    data: {
+      slug: "profile",
+      name: `${bob.username}'s Profile Collection`,
+      description: "Bob's public collection.",
+      isPublic: true,
+      userId: bob.id,
+      items: {
+        create: [{ videoId: lttVideo.id }],
       },
     },
   });
@@ -248,6 +277,19 @@ async function main() {
       userId: hybrid.id,
       items: {
         create: [{ videoId: lttVideo.id }],
+      },
+    },
+  });
+
+  // Add Profile Collection
+  await prisma.collection.create({
+    data: {
+      slug: "profile",
+      name: `${hybrid.username}'s Profile Collection`,
+      isPublic: true,
+      userId: hybrid.id,
+      items: {
+        create: [{ channelId: mkbhd.id }, { videoId: mkbhdVideo.id }],
       },
     },
   });

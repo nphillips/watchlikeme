@@ -10,6 +10,8 @@ import {
   addCollectionItem,
   removeCollectionItem,
   updateCollectionNote,
+  likeCollection,
+  unlikeCollection,
 } from "@/lib/api/collections";
 import {
   PopulatedCollectionItem,
@@ -17,10 +19,10 @@ import {
   CollectionWithItems,
   Collection,
 } from "@/interfaces";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 import useSWR, { mutate } from "swr";
-import { X } from "lucide-react";
+import { X, Heart } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -55,8 +57,9 @@ interface PaletteItem {
 }
 
 export default function CollectionPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user: loggedInUser, loading: authLoading } = useAuth();
   const { userSlug, collectionSlug } = useParams();
+  const router = useRouter();
 
   const swrKey = collectionSlug
     ? `/api/collections/${collectionSlug}/items`
@@ -126,6 +129,24 @@ export default function CollectionPage() {
       setEditableNote(""); // Reset if note is null or collection is null
     }
   }, [collection?.note]);
+
+  // --- State for Liking ---
+  const [isLiking, setIsLiking] = useState(false);
+  const [likeError, setLikeError] = useState<string | null>(null);
+
+  // Memoized values derived from SWR data
+  const likeCount = useMemo(
+    () => collection?.likeCount ?? 0,
+    [collection?.likeCount]
+  );
+  const currentUserHasLiked = useMemo(
+    () => collection?.currentUserHasLiked ?? false,
+    [collection?.currentUserHasLiked]
+  );
+  const isOwner = useMemo(
+    () => loggedInUser?.id === collection?.userId,
+    [loggedInUser?.id, collection?.userId]
+  );
 
   // Function to handle adding an item
   const handleAddItem = async (item: PaletteItem) => {
@@ -228,6 +249,71 @@ export default function CollectionPage() {
     }
   };
 
+  // --- Like/Unlike Handler ---
+  const handleLikeToggle = async () => {
+    if (!collectionSlug || typeof collectionSlug !== "string") return;
+
+    // 1. Check if logged in
+    if (!loggedInUser) {
+      // Redirect to login, potentially passing redirect back URL
+      router.push(`/login?redirect=/${userSlug}/${collectionSlug}`);
+      return;
+    }
+
+    setIsLiking(true);
+    setLikeError(null);
+
+    // Current state before optimistic update
+    const currentLikedStatus = currentUserHasLiked;
+    const currentLikeCount = likeCount;
+
+    // Optimistic UI Update Data
+    const optimisticData: CollectionWithItems | undefined = data
+      ? {
+          ...data,
+          collection: {
+            ...data.collection,
+            currentUserHasLiked: !currentLikedStatus,
+            likeCount: currentLikedStatus
+              ? currentLikeCount - 1
+              : currentLikeCount + 1,
+          },
+        }
+      : undefined;
+
+    // Perform Optimistic Update via SWR Mutate
+    // false means don't revalidate immediately, we'll do it after the API call
+    if (optimisticData) {
+      mutateItems(optimisticData, false);
+    }
+
+    try {
+      // 2. Call the appropriate API function
+      if (currentLikedStatus) {
+        await unlikeCollection(collectionSlug);
+      } else {
+        await likeCollection(collectionSlug);
+      }
+      console.log("Like/Unlike successful");
+      // 3. Trigger revalidation from server to confirm
+      mutateItems();
+    } catch (err) {
+      console.error("Error liking/unliking collection:", err);
+      setLikeError(
+        err instanceof Error ? err.message : "Failed to update like status"
+      );
+      // Revert optimistic update on error
+      mutateItems(data, false); // Revert to original data without revalidating yet
+      // Optionally trigger a delayed revalidation after revert if needed
+      // setTimeout(() => mutateItems(), 1000);
+
+      // Clear error after a few seconds
+      setTimeout(() => setLikeError(null), 5000);
+    } finally {
+      setIsLiking(false);
+    }
+  };
+
   if (authLoading || (itemsLoading && !data)) {
     // Show loading if auth or initial data fetch is happening
     return (
@@ -267,12 +353,41 @@ export default function CollectionPage() {
   return (
     <div className="min-h-screen p-4">
       <Nav />
-      <h1 className="text-2xl font-bold my-4">
-        {/* Use collection name from fetched data */}
-        {collection.name}
-      </h1>
-      {/* Show Edit button only to owner */}
-      {user?.id === collection?.userId && (
+      <div className="mb-4 flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-bold">{collection.name}</h1>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLikeToggle}
+            disabled={isLiking}
+          >
+            {isLiking ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-gray-500 mr-2"></div>
+            ) : (
+              <Heart
+                className={`mr-2 h-4 w-4 ${
+                  currentUserHasLiked ? "fill-red-500 text-red-500" : ""
+                }`}
+              />
+            )}
+            {currentUserHasLiked ? "Liked" : "Like"}
+          </Button>
+          <span className="text-sm text-gray-600">
+            {likeCount} {likeCount === 1 ? "like" : "likes"}
+          </span>
+        </div>
+      </div>
+
+      {likeError && (
+        <p className="text-sm text-red-500 mb-2 -mt-2 text-right">
+          Error: {likeError}
+        </p>
+      )}
+
+      {isOwner && (
         <div className="mb-4">
           <Button variant="outline" size="sm" onClick={handleOpenEditNote}>
             Edit Note
@@ -280,11 +395,9 @@ export default function CollectionPage() {
         </div>
       )}
 
-      {/* Display Collection Note/Description */}
       {(collection.note || collection.description) && (
         <div className="mb-4 p-3 bg-gray-50 rounded border border-gray-200">
           <h3 className="font-semibold mb-1">Notes:</h3>
-          {/* TODO: Render markdown if we support it later */}
           <p className="text-gray-700 whitespace-pre-wrap">
             {collection.note || collection.description}
           </p>
@@ -292,12 +405,10 @@ export default function CollectionPage() {
       )}
 
       <div className="my-4">
-        {/* Command Palette remains the same */}
         <CommandPalette
           onAddItem={handleAddItem}
           existingItemYoutubeIds={existingItemYoutubeIds}
         />
-        {/* ... (Add/Remove operation feedback) ... */}
         {isAdding && (
           <p className="text-sm text-blue-500 mt-2">Adding item...</p>
         )}
@@ -313,8 +424,6 @@ export default function CollectionPage() {
 
       <h2 className="text-lg font-bold my-4">Items in Collection</h2>
 
-      {/* Use extracted items array for rendering list */}
-      {/* Loading indicator specifically for items *after* initial page load can use itemsLoading */}
       {itemsLoading && items.length === 0 && (
         <div className="flex justify-center items-center">
           <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
@@ -329,7 +438,6 @@ export default function CollectionPage() {
 
       {items.length > 0 && (
         <ul className="space-y-2">
-          {/* Use extracted items array */}
           {items.map((item) => {
             const displayItem = item.channel || item.video;
             const channelInfo = item.channel || item.video?.channel;
@@ -390,7 +498,6 @@ export default function CollectionPage() {
         </ul>
       )}
 
-      {/* --- Edit Note Dialog --- */}
       <Dialog open={isEditingNote} onOpenChange={setIsEditingNote}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -409,10 +516,9 @@ export default function CollectionPage() {
                 value={editableNote}
                 onChange={(e) => setEditableNote(e.target.value)}
                 placeholder="Add your notes here... Supports basic markdown maybe later?"
-                className="col-span-3 h-32" // Make textarea larger
+                className="col-span-3 h-32"
               />
             </div>
-            {/* Display save error inside dialog */}
             {saveNoteError && (
               <p className="text-sm text-red-500 col-span-4 text-center">
                 Error: {saveNoteError}

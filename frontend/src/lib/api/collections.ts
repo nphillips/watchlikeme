@@ -238,3 +238,89 @@ export async function updateCollectionNote(
   );
   return updatedCollection;
 }
+
+/**
+ * Likes a specific collection for the authenticated user.
+ * @param collectionSlug The slug of the collection to like.
+ */
+export async function likeCollection(collectionSlug: string): Promise<void> {
+  // POST returns 201, but we might not need the like object
+  const path = `/api/collections/${collectionSlug}/like`;
+  console.log(`[API Client] Liking collection via: POST ${path}`);
+
+  const response = await backendFetch(path, {
+    method: "POST",
+    // No body needed for liking
+  });
+
+  console.log(`[API Client] POST ${path} status: ${response.status}`);
+
+  // Check for 201 Created or potentially 409 Conflict (already liked)
+  if (response.ok || response.status === 409) {
+    console.log(
+      `[API Client] Like operation successful (or already liked) for ${collectionSlug}.`
+    );
+    return; // Treat "already liked" as success from UI perspective
+  }
+
+  // Handle other errors
+  let errorBody = `Failed to like collection: ${response.statusText}`;
+  const contentType = response.headers.get("content-type");
+  try {
+    if (contentType && contentType.includes("application/json")) {
+      const body = await response.json();
+      errorBody = body.error || body.message || errorBody;
+      console.error("[API Client] Error response body (JSON):", body);
+    } else {
+      const textBody = await response.text();
+      if (textBody) {
+        errorBody = textBody;
+      }
+    }
+  } catch (e) {
+    /* Ignore parsing error */
+  }
+  throw new Error(`${errorBody} (Status: ${response.status})`);
+}
+
+/**
+ * Unlikes a specific collection for the authenticated user.
+ * @param collectionSlug The slug of the collection to unlike.
+ */
+export async function unlikeCollection(collectionSlug: string): Promise<void> {
+  const path = `/api/collections/${collectionSlug}/like`;
+  console.log(`[API Client] Unliking collection via: DELETE ${path}`);
+
+  const response = await backendFetch(path, {
+    method: "DELETE",
+  });
+
+  console.log(`[API Client] DELETE ${path} status: ${response.status}`);
+
+  // Check for 204 No Content or 404 Not Found (already unliked)
+  if (response.status === 204 || response.status === 404) {
+    console.log(
+      `[API Client] Unlike operation successful (or like not found) for ${collectionSlug}.`
+    );
+    return; // Treat "like not found" as success from UI perspective
+  }
+
+  // Handle other errors
+  let errorBody = `Failed to unlike collection: ${response.statusText}`;
+  const contentType = response.headers.get("content-type");
+  try {
+    if (contentType && contentType.includes("application/json")) {
+      const body = await response.json();
+      errorBody = body.error || body.message || errorBody;
+      console.error("[API Client] Error response body (JSON):", body);
+    } else {
+      const textBody = await response.text();
+      if (textBody) {
+        errorBody = textBody;
+      }
+    }
+  } catch (e) {
+    /* Ignore parsing error */
+  }
+  throw new Error(`${errorBody} (Status: ${response.status})`);
+}

@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma";
 import { youtube } from "../lib/youtube"; // Import youtube client
 import { google } from "googleapis"; // Import googleapis for types
 import { ParamsDictionary } from "express-serve-static-core"; // Import ParamsDictionary
+import { Prisma } from "@prisma/client"; // Import Prisma namespace
 
 const router = express.Router();
 
@@ -360,75 +361,80 @@ router.get("/:collectionSlug/items", authenticateToken, async (req, res) => {
   const { collectionSlug } = req.params;
 
   if (!authInfo) {
-    // Even for public collections, we might need auth later for likes etc.
-    // For now, let's require auth to view any collection details via this endpoint.
-    // A separate public, unauthenticated endpoint could be made later if needed.
     return res.status(401).json({ error: "User not authenticated" });
   }
 
-  try {
-    // 1. Try finding the collection owned by the current user
-    let collection = await prisma.collection.findUnique({
-      where: {
-        userId_slug: {
-          userId: authInfo.id,
-          slug: collectionSlug,
-        },
-      },
+  // Define Prisma include arguments
+  const includeArgs = {
+    _count: { select: { likes: true } },
+    likes: {
+      where: { userId: authInfo.id },
+      select: { id: true },
+    },
+    items: {
       include: {
-        // Include items only if found this way
-        items: {
-          include: {
-            channel: true,
-            video: { include: { channel: true } },
-          },
-          orderBy: { createdAt: "asc" },
-        },
+        channel: true,
+        video: { include: { channel: true } },
       },
+      orderBy: { createdAt: Prisma.SortOrder.asc }, // Use Prisma enum
+    },
+  };
+
+  try {
+    // 1. Try finding owned collection
+    let collectionResult = await prisma.collection.findUnique({
+      where: { userId_slug: { userId: authInfo.id, slug: collectionSlug } },
+      include: includeArgs,
     });
 
-    // 2. If not found for the current user, check if a public collection exists with that slug
-    if (!collection) {
+    // 2. If not found owned, check for public
+    if (!collectionResult) {
       console.log(
         `[Get Collection] Collection ${collectionSlug} not found for user ${authInfo.id}. Checking public.`
       );
-      collection = await prisma.collection.findFirst({
-        where: {
-          slug: collectionSlug,
-          isPublic: true, // Must be public
-        },
-        include: {
-          // Include items if found this way
-          items: {
-            include: {
-              channel: true,
-              video: { include: { channel: true } },
-            },
-            orderBy: { createdAt: "asc" },
-          },
-        },
+      collectionResult = await prisma.collection.findFirst({
+        where: { slug: collectionSlug, isPublic: true },
+        include: includeArgs,
       });
     }
 
-    // 3. If still not found (neither owned nor public), return 404
-    if (!collection) {
+    // 3. Handle not found
+    if (!collectionResult) {
       console.log(
-        `[Get Collection] Collection ${collectionSlug} not found or is private and not owned by user ${authInfo.id}`
+        `[Get Collection] Collection ${collectionSlug} not found or not accessible by user ${authInfo.id}`
       );
       return res
         .status(404)
         .json({ error: "Collection not found or not accessible" });
     }
 
-    // 4. If found (either owned or public), return it
+    // 4. Process and return result (Type safety with checks)
     console.log(
-      `[Get Collection] Returning collection ${collection.id} (${collection.name}) for user ${authInfo.id}`
+      `[Get Collection] Returning collection ${collectionResult.id} (${collectionResult.name}) for user ${authInfo.id}`
     );
-    // Ensure items is always an array, even if includes weren't run or returned null
-    const items = collection.items || [];
-    // Remove items from the main collection object before sending
-    const { items: _, ...collectionData } = collection;
-    return res.json({ collection: collectionData, items: items });
+
+    // Safely access potentially included fields
+    const items = collectionResult.items ?? [];
+    const likeCount = (collectionResult as any)._count?.likes ?? 0; // Use type assertion for _count
+    const currentUserHasLiked =
+      ((collectionResult as any).likes?.length ?? 0) > 0; // Use type assertion for likes
+
+    // Exclude potentially undefined relations from the base object safely
+    const {
+      items: _,
+      likes: __,
+      _count: ___,
+      ...collectionData
+    } = collectionResult;
+
+    return res.json({
+      collection: {
+        ...collectionData,
+        likeCount,
+        currentUserHasLiked,
+      },
+      items: items,
+    });
   } catch (error) {
     console.error(
       `Error fetching data for collection ${collectionSlug}:`,
@@ -568,6 +574,121 @@ router.delete(
 // Public collection routes
 router.get("/:userSlug/:collectionSlug", (req, res) => {
   res.json({ message: "Public collection endpoint" });
+});
+
+// --- Like a Collection ---
+router.post("/:collectionSlug/like", authenticateToken, async (req, res) => {
+  const authInfo = req.watchLikeMeAuthInfo;
+  const { collectionSlug } = req.params;
+
+  if (!authInfo) {
+    return res.status(401).json({ error: "Authentication required to like" });
+  }
+
+  try {
+    // 1. Find the collection (must exist, can be public or owned)
+    const collection = await prisma.collection.findFirst({
+      where: {
+        slug: collectionSlug,
+        OR: [
+          { isPublic: true }, // Allow liking public collections
+          { userId: authInfo.id }, // Allow liking own collections
+        ],
+      },
+      select: { id: true, userId: true }, // Select ID for like creation and userId for info
+    });
+
+    if (!collection) {
+      console.log(
+        `[Like Collection] Collection ${collectionSlug} not found or not accessible by user ${authInfo.id}`
+      );
+      return res
+        .status(404)
+        .json({ error: "Collection not found or inaccessible" });
+    }
+
+    // 2. Create the like record
+    const newLike = await prisma.collectionLike.create({
+      data: {
+        userId: authInfo.id,
+        collectionId: collection.id,
+      },
+    });
+
+    console.log(
+      `[Like Collection] User ${authInfo.id} liked collection ${collection.id}`
+    );
+    // Return the new like record (or just success status)
+    res.status(201).json(newLike);
+  } catch (error: any) {
+    console.error(
+      `[Like Collection] Error liking collection ${collectionSlug} for user ${authInfo.id}:`,
+      error
+    );
+    // Handle potential unique constraint violation (already liked)
+    if (error.code === "P2002") {
+      // Prisma unique constraint violation code
+      return res
+        .status(409)
+        .json({ error: "Collection already liked by this user." });
+    }
+    res.status(500).json({ error: "Failed to like collection" });
+  }
+});
+
+// --- Unlike a Collection ---
+router.delete("/:collectionSlug/like", authenticateToken, async (req, res) => {
+  const authInfo = req.watchLikeMeAuthInfo;
+  const { collectionSlug } = req.params;
+
+  if (!authInfo) {
+    return res.status(401).json({ error: "Authentication required to unlike" });
+  }
+
+  try {
+    // 1. Find the collection (needed to find the like by userId+collectionId)
+    // We don't strictly need to check visibility here, as the like existence is tied to the user
+    const collection = await prisma.collection.findFirst({
+      where: { slug: collectionSlug }, // Find any collection with this slug
+      select: { id: true },
+    });
+
+    if (!collection) {
+      // If collection doesn't exist, the like can't exist
+      return res.status(404).json({ error: "Collection not found" });
+    }
+
+    // 2. Attempt to delete the like record based on user and collection ID
+    const deleteResult = await prisma.collectionLike.deleteMany({
+      where: {
+        userId: authInfo.id,
+        collectionId: collection.id,
+      },
+    });
+
+    // 3. Check if a record was actually deleted
+    if (deleteResult.count === 0) {
+      // This means the user hadn't liked this collection
+      console.log(
+        `[Unlike Collection] Like not found for user ${authInfo.id} on collection ${collection.id}`
+      );
+      return res
+        .status(404)
+        .json({ error: "Like not found for this user and collection" });
+    }
+
+    console.log(
+      `[Unlike Collection] User ${authInfo.id} unliked collection ${collection.id}`
+    );
+    // Return success (204 No Content)
+    res.status(204).send();
+  } catch (error) {
+    console.error(
+      `[Unlike Collection] Error unliking collection ${collectionSlug} for user ${authInfo.id}:`,
+      error
+    );
+    res.status(500).json({ error: "Failed to unlike collection" });
+  }
 });
 
 export default router;

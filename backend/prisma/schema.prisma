@@ -30,6 +30,7 @@ model User {
   collections    Collection[]
   // Google tokens
   googleToken    GoogleToken?
+  likes          CollectionLike[]
   createdAt      DateTime     @default(now())
 }
 
@@ -78,6 +79,7 @@ model Collection {
   userId         String
   // Items: either a channel or a specific video
   items          CollectionItem[]
+  likes          CollectionLike[]
   createdAt      DateTime         @default(now())
 
   @@unique([userId, slug])
@@ -106,4 +108,21 @@ model GoogleToken {
   expiryDate     DateTime
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+// --- Add CollectionLike model ---
+model CollectionLike {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  // Relation to User who liked
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade) 
+  userId String
+
+  // Relation to Collection that was liked
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade) 
+  collectionId String
+
+  // Ensure a user can only like a specific collection once
+  @@unique([userId, collectionId])
 }

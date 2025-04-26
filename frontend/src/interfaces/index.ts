@@ -52,6 +52,9 @@ export interface Collection {
   userSlug?: string; // Making optional, might be added via transformation
   createdAt: string;
   updatedAt: string;
+  // Add fields returned by the updated GET endpoint
+  likeCount?: number;
+  currentUserHasLiked?: boolean;
   // Removed items from base interface
 }
 

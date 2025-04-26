@@ -4,6 +4,7 @@ import {
   AddItemRequestBody,
   PopulatedCollectionItem,
   CollectionWithItems,
+  UserCollectionsResponse,
 } from "../../interfaces/index";
 import { backendFetch } from "../backend-fetch"; // Import the helper
 
@@ -12,9 +13,9 @@ import { backendFetch } from "../backend-fetch"; // Import the helper
 //   process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8888";
 
 /**
- * Fetches the authenticated user's collections from the backend API.
+ * Fetches the authenticated user's owned and shared collections.
  */
-export async function getCollections(): Promise<Collection[]> {
+export async function getCollections(): Promise<UserCollectionsResponse> {
   // Use backendFetch for consistency
   const response = await backendFetch("/api/collections", { method: "GET" });
 
@@ -32,16 +33,16 @@ export async function getCollections(): Promise<Collection[]> {
     throw new Error(`${errorBody} (Status: ${response.status})`);
   }
 
-  const collections: Collection[] = await response.json();
+  const data: UserCollectionsResponse = await response.json();
   console.log(
-    `[API Client] Successfully fetched ${collections.length} collections.`
+    `[API Client] Fetched ${data.ownedCollections.length} owned, ${data.sharedCollections.length} shared collections.`
   );
-  return collections;
+  return data;
 }
 
 /**
  * Fetches items and details for a specific collection.
- * @param collectionSlug The slug of the collection.
+ * (Includes like count, user like status, owner username, and access grants)
  */
 export async function getCollectionItems(
   collectionSlug: string
@@ -320,6 +321,54 @@ export async function unlikeCollection(collectionSlug: string): Promise<void> {
 
   // Handle other errors
   let errorBody = `Failed to unlike collection: ${response.statusText}`;
+  const contentType = response.headers.get("content-type");
+  try {
+    if (contentType && contentType.includes("application/json")) {
+      const body = await response.json();
+      errorBody = body.error || body.message || errorBody;
+      console.error("[API Client] Error response body (JSON):", body);
+    } else {
+      const textBody = await response.text();
+      if (textBody) {
+        errorBody = textBody;
+      }
+    }
+  } catch (e) {
+    /* Ignore parsing error */
+  }
+  throw new Error(`${errorBody} (Status: ${response.status})`);
+}
+
+/**
+ * Grants another user access to a specific collection.
+ * @param collectionSlug The slug of the collection.
+ * @param targetUsername The username of the user to grant access to.
+ */
+export async function grantCollectionAccess(
+  collectionSlug: string,
+  targetUsername: string
+): Promise<void> {
+  // Returns 201 on success, maybe don't need the body
+  const path = `/api/collections/${collectionSlug}/grantAccess`;
+  console.log(`[API Client] Granting access for ${targetUsername} to ${path}`);
+
+  const response = await backendFetch(path, {
+    method: "POST",
+    body: JSON.stringify({ targetUsername }),
+  });
+
+  console.log(`[API Client] POST ${path} status: ${response.status}`);
+
+  // Check for 201 Created or 409 Conflict (already granted)
+  if (response.ok || response.status === 409) {
+    console.log(
+      `[API Client] Access grant successful (or already existed) for ${targetUsername} on ${collectionSlug}.`
+    );
+    return; // Treat existing grant as success
+  }
+
+  // Handle other errors (400, 401, 403, 404, 500)
+  let errorBody = `Failed to grant access: ${response.statusText}`;
   const contentType = response.headers.get("content-type");
   try {
     if (contentType && contentType.includes("application/json")) {

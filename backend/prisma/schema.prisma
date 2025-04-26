@@ -27,10 +27,11 @@ model User {
   // YouTube subscriptions
   subscriptions  Channel[]    @relation("UserSubscriptions")
   // Named collections
-  collections    Collection[]
+  collections    Collection[] @relation("CollectionOwner")
   // Google tokens
   googleToken    GoogleToken?
   likes          CollectionLike[]
+  grantedAccess  CollectionAccess[] @relation("GrantedAccessToUser")
   createdAt      DateTime     @default(now())
 }
 
@@ -75,11 +76,12 @@ model Collection {
   note           String?
   isPublic       Boolean          @default(true)
   // Owner
-  user           User             @relation(fields: [userId], references: [id])
+  owner          User             @relation("CollectionOwner", fields: [userId], references: [id])
   userId         String
   // Items: either a channel or a specific video
   items          CollectionItem[]
   likes          CollectionLike[]
+  accessGrants   CollectionAccess[] @relation("GrantedAccessToCollection")
   createdAt      DateTime         @default(now())
 
   @@unique([userId, slug])
@@ -125,4 +127,21 @@ model CollectionLike {
 
   // Ensure a user can only like a specific collection once
   @@unique([userId, collectionId])
+}
+
+// --- Add CollectionAccess model ---
+model CollectionAccess {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  // The user who is granted access
+  grantedToUser   User   @relation("GrantedAccessToUser", fields: [grantedToUserId], references: [id], onDelete: Cascade) 
+  grantedToUserId String
+
+  // The collection access is granted to
+  collection   Collection @relation("GrantedAccessToCollection", fields: [collectionId], references: [id], onDelete: Cascade) 
+  collectionId String
+
+  // Ensure a user only gets access granted once per collection
+  @@unique([grantedToUserId, collectionId])
 }

@@ -39,29 +39,38 @@ export interface PopulatedCollectionItem {
   video: Video | null;
 }
 
-// Represents the base Collection data (without items initially)
+// Represents the base Collection data
 export interface Collection {
   id: string;
   slug: string;
   name: string;
   description: string | null;
-  note: string | null; // Added note field based on schema check
+  note: string | null;
   isPublic: boolean;
   userId: string;
-  // userSlug might not be directly on the model, confirm if needed
-  userSlug?: string; // Making optional, might be added via transformation
+  userSlug?: string;
   createdAt: string;
   updatedAt: string;
-  // Add fields returned by the updated GET endpoint
   likeCount?: number;
   currentUserHasLiked?: boolean;
-  // Removed items from base interface
+  ownerUsername?: string; // Username of the owner (useful for shared collections)
+  // List of users this collection is shared with (only relevant for owner view)
+  sharedWith?: { id: string; username: string }[];
+  // Add accessGrants if needed directly from API response (might be nested differently)
+  accessGrants?: { grantedToUser: { id: string; username: string } }[];
 }
 
 // Represents the structure returned by GET /api/collections/:slug/items
+// The collection object here ALREADY includes fields added above
 export interface CollectionWithItems {
-  collection: Collection; // The parent collection's details
-  items: PopulatedCollectionItem[]; // The list of items
+  collection: Collection;
+  items: PopulatedCollectionItem[];
+}
+
+// Represents the structure returned by GET /api/collections
+export interface UserCollectionsResponse {
+  ownedCollections: Collection[]; // Includes sharedWith
+  sharedCollections: Collection[]; // Includes ownerUsername
 }
 
 // Request body for adding an item to a collection

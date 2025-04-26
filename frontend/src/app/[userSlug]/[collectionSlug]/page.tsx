@@ -12,6 +12,7 @@ import {
   updateCollectionDetails,
   likeCollection,
   unlikeCollection,
+  grantCollectionAccess,
 } from "@/lib/api/collections";
 import {
   PopulatedCollectionItem,
@@ -22,7 +23,7 @@ import {
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 import useSWR, { mutate } from "swr";
-import { X, Heart } from "lucide-react";
+import { X, Heart, Share2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +37,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 
 // SWR fetcher function
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -149,6 +151,20 @@ export default function CollectionPage() {
   const isOwner = useMemo(
     () => loggedInUser?.id === collection?.userId,
     [loggedInUser?.id, collection?.userId]
+  );
+
+  // --- State for Sharing ---
+  const [isSharing, setIsSharing] = useState(false); // Share dialog open state
+  const [targetUsername, setTargetUsername] = useState("");
+  const [isGrantingAccess, setIsGrantingAccess] = useState(false);
+  const [grantAccessError, setGrantAccessError] = useState<string | null>(null);
+  const [grantAccessSuccess, setGrantAccessSuccess] = useState(false);
+
+  // Get owner username and shared list from collection data
+  const ownerUsername = collection?.ownerUsername;
+  const sharedWithList = useMemo(
+    () => collection?.sharedWith ?? [],
+    [collection?.sharedWith]
   );
 
   // Function to handle adding an item
@@ -322,6 +338,45 @@ export default function CollectionPage() {
     }
   };
 
+  // --- Share Handler ---
+  const handleGrantAccess = async () => {
+    if (
+      !collectionSlug ||
+      typeof collectionSlug !== "string" ||
+      !targetUsername.trim()
+    )
+      return;
+
+    setIsGrantingAccess(true);
+    setGrantAccessError(null);
+    setGrantAccessSuccess(false);
+
+    try {
+      await grantCollectionAccess(collectionSlug, targetUsername.trim());
+      console.log(
+        `Access granted to ${targetUsername}, revalidating collection data...`
+      );
+      setGrantAccessSuccess(true);
+      setTargetUsername("");
+
+      // Trigger SWR revalidation to update displayed shared list
+      mutateItems();
+
+      setTimeout(() => {
+        setIsSharing(false);
+        setGrantAccessSuccess(false);
+      }, 2000);
+    } catch (err) {
+      console.error("Error granting access:", err);
+      setGrantAccessError(
+        err instanceof Error ? err.message : "Failed to grant access"
+      );
+      setGrantAccessSuccess(false);
+    } finally {
+      setIsGrantingAccess(false);
+    }
+  };
+
   if (authLoading || (itemsLoading && !data)) {
     // Show loading if auth or initial data fetch is happening
     return (
@@ -371,16 +426,41 @@ export default function CollectionPage() {
   return (
     <div className="min-h-screen p-4">
       <Nav />
-      <div className="mb-4 flex justify-between items-start">
+      <div className="mb-4 flex justify-between items-start flex-wrap gap-2">
         <div>
           <h1 className="text-2xl font-bold">{collection.name}</h1>
+          {/* Show owner/shared status */}
+          {!isOwner && ownerUsername && (
+            <span className="text-sm text-gray-500">
+              Shared by {ownerUsername}
+            </span>
+          )}
+          {isOwner && sharedWithList.length > 0 && (
+            <span className="text-sm text-gray-500">
+              Shared with: {sharedWithList.map((u) => u.username).join(", ")}
+            </span>
+          )}
+          {isOwner && sharedWithList.length === 0 && !collection.isPublic && (
+            <span className="text-sm text-gray-500">Private (Not shared)</span>
+          )}
+          {isOwner && collection.isPublic && (
+            <span className="text-sm text-gray-500">Public</span>
+          )}
         </div>
-        <div className="flex items-center space-x-2">
+        {/* Like Button Area */}
+        <div className="flex items-center space-x-2 mt-1">
           <Button
             variant="outline"
             size="sm"
             onClick={handleLikeToggle}
-            disabled={isLiking}
+            disabled={isLiking || isOwner} // Disable if owner OR liking
+            title={
+              isOwner
+                ? "You cannot like your own collection"
+                : currentUserHasLiked
+                ? "Unlike"
+                : "Like"
+            }
           >
             {isLiking ? (
               <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-gray-500 mr-2"></div>
@@ -405,13 +485,31 @@ export default function CollectionPage() {
         </p>
       )}
 
-      {isOwner && (
-        <div className="mb-4">
+      {/* Edit/Share Buttons Row */}
+      <div className="mb-4 flex space-x-2">
+        {/* Edit Button (only for owner) */}
+        {isOwner && (
           <Button variant="outline" size="sm" onClick={handleOpenEditDialog}>
             Edit Details
           </Button>
-        </div>
-      )}
+        )}
+        {/* Share Button (only for owner) */}
+        {isOwner && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setGrantAccessError(null);
+              setGrantAccessSuccess(false);
+              setTargetUsername("");
+              setIsSharing(true);
+            }}
+          >
+            <Share2 className="mr-2 h-4 w-4" />
+            Share
+          </Button>
+        )}
+      </div>
 
       {(collection.note || collection.description) && (
         <div className="mb-4 p-3 bg-gray-50 rounded border border-gray-200">
@@ -575,6 +673,60 @@ export default function CollectionPage() {
               disabled={isSaving}
             >
               {isSaving ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* --- Share Dialog --- */}
+      <Dialog open={isSharing} onOpenChange={setIsSharing}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Share Collection</DialogTitle>
+            <DialogDescription>
+              Grant access to another WatchLikeMe user by entering their
+              username. They must be logged in to view.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="share-username" className="text-right">
+                Username
+              </Label>
+              <Input
+                id="share-username"
+                value={targetUsername}
+                onChange={(e) => setTargetUsername(e.target.value)}
+                placeholder="Enter username..."
+                className="col-span-3"
+                disabled={isGrantingAccess}
+              />
+            </div>
+            {grantAccessSuccess && (
+              <p className="text-sm text-green-600 col-span-4 text-center">
+                Access granted successfully!
+              </p>
+            )}
+            {grantAccessError && (
+              <p className="text-sm text-red-500 col-span-4 text-center">
+                Error: {grantAccessError}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsSharing(false)}
+              disabled={isGrantingAccess}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleGrantAccess}
+              disabled={isGrantingAccess || !targetUsername.trim()}
+            >
+              {isGrantingAccess ? "Granting..." : "Grant Access"}
             </Button>
           </DialogFooter>
         </DialogContent>

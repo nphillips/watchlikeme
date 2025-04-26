@@ -2,16 +2,18 @@
 // For now, let's make it a server component for simplicity.
 
 import Link from "next/link";
-// Fall back to relative paths
+// Import the correct API function and response type
 import { getCollections } from "@/lib/api/collections";
-import { Collection } from "@/interfaces/index"; // Explicit index might still be needed with relative path
+import { UserCollectionsResponse, Collection } from "@/interfaces/index";
 import { useEffect, useState } from "react";
 import Nav from "@/components/Nav";
 import { useAuth } from "@/hooks/useAuth";
 
 // Let's make this a client component to handle loading/error states easily
 export default function CollectionsPage() {
-  const [collections, setCollections] = useState<Collection[]>([]);
+  // State to hold both owned and shared collections
+  const [ownedCollections, setOwnedCollections] = useState<Collection[]>([]);
+  const [sharedCollections, setSharedCollections] = useState<Collection[]>([]);
   const [collectionsLoading, setCollectionsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user, loading: authLoading } = useAuth();
@@ -22,8 +24,13 @@ export default function CollectionsPage() {
         setCollectionsLoading(true);
         setError(null);
         try {
-          const fetchedCollections = await getCollections();
-          setCollections(fetchedCollections);
+          // Fetch data using the updated function
+          const {
+            ownedCollections: fetchedOwned,
+            sharedCollections: fetchedShared,
+          } = await getCollections();
+          setOwnedCollections(fetchedOwned);
+          setSharedCollections(fetchedShared);
         } catch (err) {
           console.error("Failed to load collections:", err);
           setError(
@@ -37,7 +44,8 @@ export default function CollectionsPage() {
     } else if (!authLoading && !user) {
       setCollectionsLoading(false);
       setError(null);
-      setCollections([]);
+      setOwnedCollections([]); // Ensure lists are empty
+      setSharedCollections([]);
     }
   }, [authLoading, user]);
 
@@ -69,8 +77,7 @@ export default function CollectionsPage() {
   return (
     <div className="min-h-screen p-4">
       <Nav />
-
-      <h1 className="text-2xl font-bold my-4">My Collections</h1>
+      <h1 className="text-2xl font-bold my-4">Collections</h1>
 
       {collectionsLoading && <p>Loading collections...</p>}
 
@@ -82,27 +89,90 @@ export default function CollectionsPage() {
       )}
 
       {!collectionsLoading && !error && (
-        <>
-          {collections.length === 0 ? (
-            <p>You haven't created any collections yet.</p>
-          ) : (
-            <ul>
-              {collections.map((collection) => (
-                <li key={collection.id}>
-                  <Link
-                    href={`/${collection.userSlug || user.username}/${
-                      collection.slug
-                    }`}
-                    className="text-blue-500 hover:text-blue-700"
-                  >
-                    {collection.name}
-                  </Link>
-                  {collection.description && <p>{collection.description}</p>}
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
+        <div className="space-y-6">
+          {/* My Collections Section */}
+          <div>
+            <h2 className="text-xl font-semibold mb-2">My Collections</h2>
+            {ownedCollections.length === 0 ? (
+              <p className="text-gray-500">
+                You haven't created any collections yet.
+              </p>
+            ) : (
+              <ul className="space-y-1">
+                {ownedCollections.map((collection) => (
+                  <li key={collection.id}>
+                    <Link
+                      // Link uses the owner's (your) username
+                      href={`/${collection.userSlug || user.username}/${
+                        collection.slug
+                      }`}
+                      className="text-blue-500 hover:text-blue-700"
+                    >
+                      {collection.name}
+                    </Link>
+                    {/* Show shared status */}
+                    {collection.sharedWith &&
+                      collection.sharedWith.length > 0 && (
+                        <span className="text-xs text-gray-400 ml-2">
+                          (Shared with:{" "}
+                          {collection.sharedWith
+                            .map((u) => u.username)
+                            .join(", ")}
+                          )
+                        </span>
+                      )}
+                    {!collection.isPublic &&
+                      (!collection.sharedWith ||
+                        collection.sharedWith.length === 0) && (
+                        <span className="text-xs text-gray-400 ml-2">
+                          (Private)
+                        </span>
+                      )}
+                    {collection.description && (
+                      <p className="text-sm text-gray-600 pl-2">
+                        {collection.description}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {/* TODO: Add button to create new collection */}
+          </div>
+
+          {/* Shared With Me Section */}
+          <div>
+            <h2 className="text-xl font-semibold mb-2">Shared With Me</h2>
+            {sharedCollections.length === 0 ? (
+              <p className="text-gray-500">
+                No collections have been shared with you yet.
+              </p>
+            ) : (
+              <ul className="space-y-1">
+                {sharedCollections.map((collection) => (
+                  <li key={collection.id}>
+                    <Link
+                      // Link uses the owner's username
+                      href={`/${collection.ownerUsername}/${collection.slug}`}
+                      className="text-blue-500 hover:text-blue-700"
+                    >
+                      {collection.name}
+                    </Link>
+                    {/* Show owner */}
+                    <span className="text-xs text-gray-400 ml-2">
+                      (Shared by: {collection.ownerUsername})
+                    </span>
+                    {collection.description && (
+                      <p className="text-sm text-gray-600 pl-2">
+                        {collection.description}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

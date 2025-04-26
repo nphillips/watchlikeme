@@ -333,20 +333,30 @@ export default function CollectionPage() {
 
   // Handle fetch errors after initial loading state
   if (itemsError) {
+    // Check for specific permission error
+    const isForbidden = itemsError.message?.includes("(Status: 403)");
     return (
       <div className="min-h-screen p-4">
         <Nav />
         <div className="text-center text-red-500 mt-10">
-          <p>
-            Error loading collection:{" "}
-            {itemsError.message || "An unknown error occurred"}
-          </p>
+          {isForbidden ? (
+            <p>
+              Access Denied: You do not have permission to view this private
+              collection.
+            </p>
+          ) : (
+            <p>
+              Error loading collection:{" "}
+              {itemsError.message || "An unknown error occurred"}
+            </p>
+          )}
         </div>
       </div>
     );
   }
 
-  // Handle case where collection itself wasn't found (even if items array is empty)
+  // Handle collection not found (data is null/empty after loading&no error)
+  // Note: A 404 from the API will also be caught by itemsError above
   if (!collection) {
     return (
       <div className="min-h-screen p-4">

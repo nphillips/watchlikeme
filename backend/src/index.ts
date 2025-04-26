@@ -61,9 +61,6 @@ app.use("/api", router);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRouter);
 
-// Log after importing
-console.log("[index.ts] Imported userRouter. Type:", typeof userRouter);
-
 // Google OAuth strategy that only checks for user existence
 // The frontend will handle registration if the user doesn't exist
 passport.use(
@@ -94,7 +91,18 @@ passport.use(
           console.log(
             `[Passport Strategy] Found user by Google ID: ${userById.id}`
           );
-          return done(null, userById);
+          // Check if this user also has a password
+          if (userById.password) {
+            console.log(
+              `[Passport Strategy] User ${userById.id} found by Google ID also has password. Prompting password.`
+            );
+            return done(null, { ...userById, promptPassword: true });
+          } else {
+            console.log(
+              `[Passport Strategy] User ${userById.id} found by Google ID has NO password. Proceeding with login.`
+            );
+            return done(null, userById);
+          }
         }
 
         // Check by Email
@@ -127,7 +135,19 @@ passport.use(
               `[Passport Strategy] User ${userByEmail.id} email ${email} matched, but Google ID differs.`
             );
           }
-          return done(null, userByEmail);
+
+          // Check if this user also has a password
+          if (userByEmail.password) {
+            console.log(
+              `[Passport Strategy] User ${userByEmail.id} found by email also has password. Prompting password.`
+            );
+            return done(null, { ...userByEmail, promptPassword: true });
+          } else {
+            console.log(
+              `[Passport Strategy] User ${userByEmail.id} found by email has NO password. Proceeding with login.`
+            );
+            return done(null, userByEmail);
+          }
         }
 
         // New User
@@ -162,25 +182,41 @@ app.get(
   })
 );
 
-// Define handler separately (optional, but keeps code cleaner)
+// Define handler separately
 const googleCallbackHandler: RequestHandler = (req, res, next) => {
-  // Log the user object received from Passport *before* any checks
   console.log(
     "[Google Callback Handler] User object received from Passport:",
     req.user
   );
 
-  const user = req.user as User;
+  // Cast needed because Passport types req.user loosely
+  const user = req.user as User & { promptPassword?: boolean };
+
   if (!user) {
     console.error("Google callback missing user object!");
     return res.redirect("/login?error=googleAuthFailed");
   }
+
+  // Check for registration needed
   if (user.id === "temp") {
     console.log(
       "Google auth successful, but no WLM account linked. Redirecting to registration."
     );
     return res.redirect("/register?fromGoogle=true");
   }
+
+  // Check if password prompt is needed (existing user with password)
+  if (user.promptPassword) {
+    console.log(
+      `Google auth successful for existing WLM user ${user.id}, but password exists. Redirecting to login.`
+    );
+    const redirectUrl = `/login?email=${encodeURIComponent(
+      user.email
+    )}&message=passwordRequired`;
+    return res.redirect(redirectUrl);
+  }
+
+  // Otherwise: Existing user found, no password OR strategy decided auto-login is ok
   console.log(
     `Google auth successful for existing WLM user: ${user.id} (${user.email}). Logging in.`
   );

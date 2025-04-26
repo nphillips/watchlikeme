@@ -87,60 +87,12 @@ router.delete("/me/google-tokens", authenticateToken, async (req, res) => {
   }
 });
 
-// === Public Profile Collection Endpoint (Commented out / Keep as is - it wasn't working anyway) ===
-// We know this route has issues, keep it defined but expect 404 until fixed
-router.get("/:userSlug/collections/:collectionSlug", async (req, res) => {
-  const { userSlug, collectionSlug } = req.params;
-  console.warn(
-    `[Public Collection] Attempting fetch for User: ${userSlug}, Collection: ${collectionSlug} - ROUTE MAY NOT BE REACHED CORRECTLY`
-  );
-
-  // Define includes needed for response (Was missing here)
-  const includeArgs = {
-    _count: { select: { likes: true } },
-    items: {
-      include: {
-        channel: true,
-        video: { include: { channel: true } },
-      },
-      orderBy: { createdAt: Prisma.SortOrder.asc },
-    },
-  };
-
-  try {
-    const user = await prisma.user.findUnique({
-      where: { username: userSlug },
-      select: { id: true },
-    });
-    if (!user) return res.status(404).json({ error: "User not found" });
-
-    // Use includeArgs here
-    const collectionResult = await prisma.collection.findFirst({
-      where: { userId: user.id, slug: collectionSlug, isPublic: true },
-      include: includeArgs,
-    });
-
-    if (!collectionResult)
-      return res.status(404).json({ error: "Public collection not found" });
-
-    console.log(
-      `[Public Collection] Returning public collection ${collectionResult.id} (${collectionResult.name})`
-    );
-    const items = collectionResult.items ?? [];
-    const likeCount = (collectionResult as any)._count?.likes ?? 0;
-    const { items: _, _count: ___, ...collectionData } = collectionResult;
-    return res.json({
-      collection: { ...collectionData, likeCount },
-      items: items,
-    });
-  } catch (error) {
-    console.error(
-      `[Public Collection] Error fetching collection ${collectionSlug} for user ${userSlug}:`,
-      error
-    );
-    res.status(500).json({ error: "Failed to fetch public collection data" });
-  }
+// === Public Profile Collection Endpoint (Commented out - Known Routing Issue) ===
+/*
+router.get("/:userSlug/collections/:collectionSlug", async (req, res) => { 
+    // ... implementation ...
 });
+*/
 
 // === Other User Operations ===
 router.post("/oauth", async (req, res) => {
@@ -380,13 +332,5 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// Log before exporting
-console.log(
-  "[users.ts] Exporting router object. Type:",
-  typeof router,
-  "Is Router?",
-  router instanceof Router
-);
-
-// Export the single consolidated router as default
+// Export the single router as default
 export default router;

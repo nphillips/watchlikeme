@@ -520,23 +520,27 @@ export default function CollectionPage() {
         </div>
       )}
 
-      <div className="my-4">
-        <CommandPalette
-          onAddItem={handleAddItem}
-          existingItemYoutubeIds={existingItemYoutubeIds}
-        />
-        {isAdding && (
-          <p className="text-sm text-blue-500 mt-2">Adding item...</p>
-        )}
-        {addError && (
-          <p className="text-sm text-red-500 mt-2">Error adding: {addError}</p>
-        )}
-        {removeError && (
-          <p className="text-sm text-red-500 mt-2">
-            Error removing: {removeError}
-          </p>
-        )}
-      </div>
+      {isOwner && (
+        <div className="my-4">
+          <CommandPalette
+            onAddItem={handleAddItem}
+            existingItemYoutubeIds={existingItemYoutubeIds}
+          />
+          {isAdding && (
+            <p className="text-sm text-blue-500 mt-2">Adding item...</p>
+          )}
+          {addError && (
+            <p className="text-sm text-red-500 mt-2">
+              Error adding: {addError}
+            </p>
+          )}
+          {removeError && (
+            <p className="text-sm text-red-500 mt-2">
+              Error removing: {removeError}
+            </p>
+          )}
+        </div>
+      )}
 
       <h2 className="text-lg font-bold my-4">Items in Collection</h2>
 

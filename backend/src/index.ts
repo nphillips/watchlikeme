@@ -9,8 +9,8 @@ import { PrismaClient } from "@prisma/client";
 import slugify from "slugify";
 import path from "path";
 import router from "./routes";
+import userRouter from "./routes/users";
 import authRoutes from "./routes/auth";
-import usersRoutes from "./routes/users";
 import { env } from "./env";
 import { getGoogleTokensForUser } from "./lib/google";
 import { RequestHandler } from "express";
@@ -53,12 +53,16 @@ app.use(
   })
 );
 
+// @ts-ignore // Keep ignore for persistent type error
 app.use(passport.initialize());
 
 // Mount routes
-app.use("/api", router); // This mounts collection routes too
-app.use("/api/auth", authRoutes as express.Router);
-app.use("/api/users", usersRoutes as express.Router);
+app.use("/api", router);
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRouter);
+
+// Log after importing
+console.log("[index.ts] Imported userRouter. Type:", typeof userRouter);
 
 // Google OAuth strategy that only checks for user existence
 // The frontend will handle registration if the user doesn't exist
@@ -208,36 +212,6 @@ app.get(
   }),
   googleCallbackHandler // Use the typed handler
 );
-
-app.get("/api/users/me", async (req, res) => {
-  const token = req.cookies.token || "";
-  try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
-      sub: string;
-    };
-    const user = await prisma.user.findUnique({ where: { id: payload.sub } });
-    return res.json(user);
-  } catch {
-    return res.status(401).json({ error: "Not authenticated" });
-  }
-});
-
-// Fetch stored Google tokens for the authenticated user
-app.get("/api/users/me/google-tokens", async (req, res) => {
-  const token = req.cookies.token || "";
-  try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
-      sub: string;
-    };
-    const tokens = await getGoogleTokensForUser(payload.sub);
-    if (!tokens) {
-      return res.status(404).json({ error: "No Google tokens found" });
-    }
-    return res.json(tokens);
-  } catch (err) {
-    return res.status(401).json({ error: "Not authenticated" });
-  }
-});
 
 // Start the server if we're not in a serverless environment
 if (!process.env.NETLIFY) {

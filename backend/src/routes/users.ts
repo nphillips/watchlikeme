@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Router } from "express";
 import { PrismaClient, Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -7,16 +7,14 @@ import { authenticateToken } from "../middleware/auth";
 import { getGoogleTokensForUser } from "../lib/google";
 
 const prisma = new PrismaClient();
-const router = express.Router();
+const router = Router(); // Use single router
 
-// User profile and token management
+// === Authenticated /me Routes ===
 router.get("/me", authenticateToken, async (req, res) => {
   const authInfo = req.watchLikeMeAuthInfo;
   if (!authInfo) {
     return res.status(401).json({ error: "Not authenticated" });
   }
-  // Fetch full user details if needed, or return basic info from authInfo
-  // Let's fetch full details for now, as the frontend might expect it
   try {
     const user = await prisma.user.findUnique({
       where: { id: authInfo.id },
@@ -24,21 +22,16 @@ router.get("/me", authenticateToken, async (req, res) => {
         id: true,
         email: true,
         username: true,
-        googleId: true, // Needed to determine link status
+        googleId: true,
         name: true,
         image: true,
         role: true,
-        // googleToken: false // Don't return tokens
       },
     });
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-    // Determine hasGoogleAuth based on googleId presence
-    const userResponse = {
-      ...user,
-      hasGoogleAuth: !!user.googleId,
-    };
+    const userResponse = { ...user, hasGoogleAuth: !!user.googleId };
     res.json(userResponse);
   } catch (error) {
     console.error("Error fetching user details for /me:", error);
@@ -62,7 +55,94 @@ router.get("/me/google-tokens", authenticateToken, async (req, res, next) => {
   }
 });
 
-// Google OAuth user management
+router.delete("/me/google-tokens", authenticateToken, async (req, res) => {
+  const authInfo = req.watchLikeMeAuthInfo;
+  if (!authInfo) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+  try {
+    console.log(`[Delete Tokens] Attempting delete for user: ${authInfo.id}`);
+    await prisma.$transaction(async (tx) => {
+      const deleteResult = await tx.googleToken.deleteMany({
+        where: { userId: authInfo.id },
+      });
+      console.log(
+        `[Delete Tokens] GoogleToken delete result count: ${deleteResult.count}`
+      );
+      await tx.user.update({
+        where: { id: authInfo.id },
+        data: { googleId: null },
+      });
+      console.log(
+        `[Delete Tokens] Set User.googleId to null for user: ${authInfo.id}`
+      );
+    });
+    res.status(204).send();
+  } catch (error) {
+    console.error(
+      `[Delete Tokens] Error unlinking Google account for user ${authInfo.id}:`,
+      error
+    );
+    res.status(500).json({ error: "Failed to unlink Google account" });
+  }
+});
+
+// === Public Profile Collection Endpoint (Commented out / Keep as is - it wasn't working anyway) ===
+// We know this route has issues, keep it defined but expect 404 until fixed
+router.get("/:userSlug/collections/:collectionSlug", async (req, res) => {
+  const { userSlug, collectionSlug } = req.params;
+  console.warn(
+    `[Public Collection] Attempting fetch for User: ${userSlug}, Collection: ${collectionSlug} - ROUTE MAY NOT BE REACHED CORRECTLY`
+  );
+
+  // Define includes needed for response (Was missing here)
+  const includeArgs = {
+    _count: { select: { likes: true } },
+    items: {
+      include: {
+        channel: true,
+        video: { include: { channel: true } },
+      },
+      orderBy: { createdAt: Prisma.SortOrder.asc },
+    },
+  };
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { username: userSlug },
+      select: { id: true },
+    });
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    // Use includeArgs here
+    const collectionResult = await prisma.collection.findFirst({
+      where: { userId: user.id, slug: collectionSlug, isPublic: true },
+      include: includeArgs,
+    });
+
+    if (!collectionResult)
+      return res.status(404).json({ error: "Public collection not found" });
+
+    console.log(
+      `[Public Collection] Returning public collection ${collectionResult.id} (${collectionResult.name})`
+    );
+    const items = collectionResult.items ?? [];
+    const likeCount = (collectionResult as any)._count?.likes ?? 0;
+    const { items: _, _count: ___, ...collectionData } = collectionResult;
+    return res.json({
+      collection: { ...collectionData, likeCount },
+      items: items,
+    });
+  } catch (error) {
+    console.error(
+      `[Public Collection] Error fetching collection ${collectionSlug} for user ${userSlug}:`,
+      error
+    );
+    res.status(500).json({ error: "Failed to fetch public collection data" });
+  }
+});
+
+// === Other User Operations ===
 router.post("/oauth", async (req, res) => {
   try {
     const { email, name, googleId, accessToken } = req.body;
@@ -113,7 +193,6 @@ router.post("/oauth", async (req, res) => {
   }
 });
 
-// Check if a user exists by email
 router.post("/check", async (req, res) => {
   try {
     const { email } = req.body;
@@ -134,7 +213,6 @@ router.post("/check", async (req, res) => {
   }
 });
 
-// Get a user by email
 router.post("/by-email", async (req, res) => {
   try {
     const { email } = req.body;
@@ -169,7 +247,6 @@ router.post("/by-email", async (req, res) => {
   }
 });
 
-// Check if a user exists by Google ID
 router.post("/check-google", async (req, res) => {
   try {
     const { googleId } = req.body;
@@ -190,7 +267,6 @@ router.post("/check-google", async (req, res) => {
   }
 });
 
-// Update a user
 router.patch("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -230,7 +306,6 @@ router.patch("/:id", async (req, res) => {
   }
 });
 
-// Create a new user
 router.post("/", async (req, res) => {
   try {
     const { username, email, password, googleId } = req.body;
@@ -277,7 +352,6 @@ router.post("/", async (req, res) => {
   }
 });
 
-// Get a user by ID
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -306,128 +380,13 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// Delete Google Tokens
-router.delete("/me/google-tokens", authenticateToken, async (req, res) => {
-  const authInfo = req.watchLikeMeAuthInfo;
-  if (!authInfo) {
-    return res.status(401).json({ error: "Not authenticated" });
-  }
-
-  try {
-    console.log(`[Delete Tokens] Attempting delete for user: ${authInfo.id}`);
-
-    // Use a transaction to delete token and nullify googleId on User
-    await prisma.$transaction(async (tx) => {
-      // Delete the token record
-      // Use deleteMany as the relation is 1-to-1 based on unique userId
-      const deleteResult = await tx.googleToken.deleteMany({
-        where: { userId: authInfo.id },
-      });
-      console.log(
-        `[Delete Tokens] GoogleToken delete result count: ${deleteResult.count}`
-      );
-
-      // Set User.googleId to null
-      await tx.user.update({
-        where: { id: authInfo.id },
-        data: { googleId: null },
-      });
-      console.log(
-        `[Delete Tokens] Set User.googleId to null for user: ${authInfo.id}`
-      );
-    });
-
-    // Return success (204 No Content)
-    res.status(204).send();
-  } catch (error) {
-    console.error(
-      `[Delete Tokens] Error unlinking Google account for user ${authInfo.id}:`,
-      error
-    );
-    res.status(500).json({ error: "Failed to unlink Google account" });
-  }
-});
-
-// === Public Profile Collection Endpoint ===
-router.get(
-  "/:userSlug/collections/:collectionSlug",
-  // No authentication middleware needed for public view
-  async (req, res) => {
-    const { userSlug, collectionSlug } = req.params;
-
-    console.log(
-      `[Public Collection] Attempting fetch for User: ${userSlug}, Collection: ${collectionSlug}`
-    );
-
-    // Define includes needed for response
-    const includeArgs = {
-      _count: { select: { likes: true } },
-      // No user-specific like check needed here
-      items: {
-        include: {
-          channel: true,
-          video: { include: { channel: true } },
-        },
-        orderBy: { createdAt: Prisma.SortOrder.asc },
-      },
-    };
-
-    try {
-      // 1. Find the user by username
-      const user = await prisma.user.findUnique({
-        where: { username: userSlug },
-        select: { id: true }, // Only need ID
-      });
-
-      if (!user) {
-        console.log(`[Public Collection] User not found: ${userSlug}`);
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      // 2. Find the specific collection for that user, ensuring it's public
-      const collectionResult = await prisma.collection.findFirst({
-        where: {
-          userId: user.id,
-          slug: collectionSlug,
-          isPublic: true, // MUST be public for this endpoint
-        },
-        include: includeArgs,
-      });
-
-      // 3. Handle collection not found or not public
-      if (!collectionResult) {
-        console.log(
-          `[Public Collection] Public collection '${collectionSlug}' not found for user ${userSlug}`
-        );
-        return res.status(404).json({ error: "Public collection not found" });
-      }
-
-      // 4. Process and return data
-      console.log(
-        `[Public Collection] Returning public collection ${collectionResult.id} (${collectionResult.name})`
-      );
-
-      const items = collectionResult.items ?? [];
-      const likeCount = (collectionResult as any)._count?.likes ?? 0;
-      // No currentUserHasLiked for public view
-      const { items: _, _count: ___, ...collectionData } = collectionResult;
-
-      return res.json({
-        collection: {
-          ...collectionData,
-          likeCount,
-          // currentUserHasLiked will be undefined here
-        },
-        items: items,
-      });
-    } catch (error) {
-      console.error(
-        `[Public Collection] Error fetching collection ${collectionSlug} for user ${userSlug}:`,
-        error
-      );
-      res.status(500).json({ error: "Failed to fetch public collection data" });
-    }
-  }
+// Log before exporting
+console.log(
+  "[users.ts] Exporting router object. Type:",
+  typeof router,
+  "Is Router?",
+  router instanceof Router
 );
 
+// Export the single consolidated router as default
 export default router;

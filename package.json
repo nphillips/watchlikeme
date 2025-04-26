@@ -13,7 +13,7 @@
     "dev:all": "concurrently \"yarn workspace frontend dev\" \"yarn workspace backend dev\"",
     "dev:frontend": "yarn workspace frontend dev",
     "dev:backend": "yarn workspace backend dev",
-    "clean:full": "git clean -fdx -e .env && rm -rf node_modules yarn.lock .yarn .pnp.cjs .pnp.loader.mjs frontend/.next && yarn install && yarn workspace backend prisma:generate && ln -sf ../.env frontend/.env.local"
+    "clean:full": "git clean -fdX -e .env && rm -rf node_modules yarn.lock .yarn .pnp.cjs .pnp.loader.mjs frontend/.next && yarn install && yarn workspace backend prisma:generate && ln -sf ../.env frontend/.env.local"
   },
   "packageManager": "yarn@4.9.1",
   "netlify": {

@@ -587,12 +587,31 @@ export default function CollectionPage() {
                   </div>
                 )}
                 <span className="flex-1 flex flex-col">
-                  <span className="font-medium line-clamp-1">
-                    {displayItem.title}
-                  </span>
+                  {item.channel ? (
+                    <a
+                      href={`https://www.youtube.com/channel/${item.channel.youtubeId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium line-clamp-1 hover:underline text-blue-600"
+                    >
+                      {displayItem.title}
+                    </a>
+                  ) : (
+                    <span className="font-medium line-clamp-1">
+                      {displayItem.title}
+                    </span>
+                  )}
                   {isVideo && channelInfo && (
                     <span className="text-sm text-gray-500 line-clamp-1">
-                      Channel: {channelInfo.title}
+                      Channel:{" "}
+                      <a
+                        href={`https://www.youtube.com/channel/${channelInfo.youtubeId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:underline"
+                      >
+                        {channelInfo.title}
+                      </a>
                     </span>
                   )}
                 </span>

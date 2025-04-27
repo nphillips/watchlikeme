@@ -425,10 +425,11 @@ export default function CollectionPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col md:pl-[var(--width-left-nav)]">
-      <div className="hidden md:flex">
+    <div className="flex min-h-screen flex-col">
+      {/* Remove desktop LeftNav rendering from here */}
+      {/* <div className="hidden md:flex">
         <LeftNav />
-      </div>
+      </div> */}
       <div className="flex flex-1 flex-col items-center py-10">
         <div className="container w-full px-4 md:px-6">
           <div>
@@ -499,6 +500,7 @@ export default function CollectionPage() {
                 variant="outline"
                 size="sm"
                 onClick={handleOpenEditDialog}
+                className="bg-white"
               >
                 Edit Details
               </Button>
@@ -551,6 +553,121 @@ export default function CollectionPage() {
               )}
             </div>
           )}
+
+          {/* Restore Collection Items List */}
+          <h2 className="my-4 text-lg font-bold">Items in Collection</h2>
+          {itemsLoading && items.length === 0 && (
+            <div className="flex items-center justify-center">
+              <div className="h-6 w-6 animate-spin rounded-full border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          )}
+          {!itemsLoading && items.length === 0 && (
+            <div className="text-center text-gray-500">
+              No items in this collection yet.
+            </div>
+          )}
+          {items.length > 0 && (
+            <ul className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] [grid-template-rows:repeat(2,min-content)] gap-2">
+              {items.map((item) => {
+                const displayItem = item.channel || item.video;
+                const channelInfo = item.channel || item.video?.channel;
+                const isVideo = !!item.video;
+                const isCurrentlyRemoving = removingItemId === item.id;
+
+                // Skip rendering if essential data is missing
+                if (!displayItem) {
+                  console.warn(
+                    "Skipping rendering item without display data:",
+                    item,
+                  );
+                  return null;
+                }
+                // Use a placeholder if channelInfo is missing but we still want to show the item
+                const displayChannelInfo = channelInfo || {
+                  title: "Unknown Channel",
+                  youtubeId: "",
+                };
+
+                return (
+                  <li
+                    key={item.id}
+                    className={`flex flex-col items-center justify-center gap-3 rounded-md border p-2 ${
+                      isCurrentlyRemoving ? "opacity-50" : ""
+                    }`}
+                  >
+                    {displayItem.thumbnail ? (
+                      <YouTubeThumbnail
+                        url={displayItem.thumbnail}
+                        alt={displayItem.title}
+                        size="2xl"
+                      />
+                    ) : (
+                      <div className="flex h-24 w-24 items-center justify-center rounded bg-gray-200 text-xs text-gray-400">
+                        No Img
+                      </div>
+                    )}
+                    <span className="flex flex-1 flex-col text-center">
+                      {item.channel ? (
+                        <a
+                          href={`https://www.youtube.com/channel/${item.channel.youtubeId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="line-clamp-1 font-medium hover:underline"
+                          title={displayItem.title} // Add title attribute for full text on hover
+                        >
+                          {displayItem.title}
+                        </a>
+                      ) : (
+                        <span
+                          className="line-clamp-1 font-medium"
+                          title={displayItem.title}
+                        >
+                          {displayItem.title}
+                        </span>
+                      )}
+                      {isVideo && (
+                        <span
+                          className="line-clamp-1 text-sm text-gray-500"
+                          title={displayChannelInfo.title}
+                        >
+                          Channel:{" "}
+                          {displayChannelInfo.youtubeId ? (
+                            <a
+                              href={`https://www.youtube.com/channel/${displayChannelInfo.youtubeId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:underline"
+                            >
+                              {displayChannelInfo.title}
+                            </a>
+                          ) : (
+                            <span>{displayChannelInfo.title}</span>
+                          )}
+                        </span>
+                      )}
+                    </span>
+                    {isOwner && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveItem(item.id)}
+                        disabled={isCurrentlyRemoving}
+                        aria-label="Remove item"
+                        className="mt-auto" // Push button towards the bottom
+                      >
+                        {isCurrentlyRemoving ? (
+                          <div className="h-4 w-4 animate-spin rounded-full border-t-2 border-b-2 border-gray-500"></div>
+                        ) : (
+                          <X className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {/* End Restore Collection Items List */}
 
           <Dialog open={isEditing} onOpenChange={setIsEditing}>
             <DialogContent className="sm:max-w-[425px]">

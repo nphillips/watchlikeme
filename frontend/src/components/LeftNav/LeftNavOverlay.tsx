@@ -1,3 +1,4 @@
+import Logo from "../Logo";
 import LeftNavContent from "./LeftNavContent";
 import {
   Sheet,
@@ -5,14 +6,30 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Button } from "../ui/button";
+import { Menu } from "lucide-react";
+import { Collection } from "@/interfaces/index";
 
 // Define props
 interface LeftNavOverlayProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  ownedCollections: Collection[];
+  sharedCollections: Collection[];
+  isLoading: boolean;
+  error: string | null;
+  currentUser: { username: string } | null;
 }
 
-const LeftNavOverlay = ({ isOpen, onOpenChange }: LeftNavOverlayProps) => {
+const LeftNavOverlay = ({
+  isOpen,
+  onOpenChange,
+  ownedCollections,
+  sharedCollections,
+  isLoading,
+  error,
+  currentUser,
+}: LeftNavOverlayProps) => {
   console.log("LeftNavOverlay: Rendering with isOpen =", isOpen);
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -20,13 +37,16 @@ const LeftNavOverlay = ({ isOpen, onOpenChange }: LeftNavOverlayProps) => {
         <SheetHeader>
           <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
         </SheetHeader>
-        <LeftNavContent
-          ownedCollections={[]}
-          sharedCollections={[]}
-          isLoading={false}
-          error={null}
-          currentUser={null}
-        />
+
+        <div className="px-4">
+          <LeftNavContent
+            ownedCollections={ownedCollections}
+            sharedCollections={sharedCollections}
+            isLoading={isLoading}
+            error={error}
+            currentUser={currentUser}
+          />
+        </div>
       </SheetContent>
     </Sheet>
   );

@@ -6,7 +6,6 @@ import Link from "next/link";
 import { ModeToggle } from "../mode-toggle";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
-import { LeftNavCollections } from "@/components/LeftNav";
 import Logo from "../Logo";
 
 // Define props for Nav

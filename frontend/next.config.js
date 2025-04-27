@@ -17,6 +17,15 @@ const nextConfig = {
     NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL,
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
   },
+  async redirects() {
+    return [
+      {
+        source: "/collections",
+        destination: "/",
+        permanent: true, // Use true for permanent redirect (308)
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

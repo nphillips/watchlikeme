@@ -47,10 +47,13 @@ const Nav = () => {
   return (
     <>
       <div className="h-15"></div>
-      <div className="dark fixed top-0 right-0 left-0 z-50 flex h-15 flex-[0_0_auto] items-center justify-between border-b border-gray-700 bg-slate-900 text-slate-50">
+      <div className="dark fixed top-0 right-0 left-0 z-50 flex h-15 flex-[0_0_auto] items-center justify-between border-b border-gray-700 bg-slate-800 text-slate-50 dark:bg-slate-900">
         <div className="container mx-auto flex w-full items-center justify-between px-4 md:px-6">
           <div>
-            <Link href="/" className="mb-4 text-2xl font-bold">
+            <Link
+              href="/"
+              className="mb-4 text-2xl font-bold text-slate-300 dark:text-slate-100"
+            >
               WatchLikeMe
             </Link>
           </div>

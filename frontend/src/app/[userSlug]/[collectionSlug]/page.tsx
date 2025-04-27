@@ -38,6 +38,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 // SWR fetcher function
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -427,10 +428,10 @@ export default function CollectionPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
+      <Nav />
       <div className="flex flex-1 flex-col items-center py-10">
         <div className="container w-full px-4 md:px-6">
-          <Nav />
-          <div className="flex flex-1 flex-col items-center py-10">
+          <div>
             <div>
               <h1 className="text-2xl font-bold">{collection.name}</h1>
               {/* Show owner/shared status */}
@@ -458,6 +459,7 @@ export default function CollectionPage() {
                 size="sm"
                 onClick={handleLikeToggle}
                 disabled={isLiking || isOwner} // Disable if owner OR liking
+                className={cn("bg-white", isOwner && "hidden")}
                 title={
                   isOwner
                     ? "You cannot like your own collection"
@@ -729,7 +731,7 @@ export default function CollectionPage() {
                     value={targetUsername}
                     onChange={(e) => setTargetUsername(e.target.value)}
                     placeholder="Enter username..."
-                    className="col-span-3"
+                    className="col-span-3 bg-white"
                     disabled={isGrantingAccess}
                   />
                 </div>

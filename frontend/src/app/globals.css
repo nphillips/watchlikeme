@@ -43,7 +43,7 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(96.8% 0.007 247.896); /* slate-50 */
+  --background: oklch(92.9% 0.013 255.508); /* slate-200 */
   --foreground: oklch(20.8% 0.042 265.755); /* slate-900 */
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.13 0.028 261.692);

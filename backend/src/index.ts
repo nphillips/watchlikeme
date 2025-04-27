@@ -1,6 +1,9 @@
-import express from "express";
+import express, { RequestHandler } from "express";
 import passport from "passport";
-import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import {
+  Strategy as GoogleStrategy,
+  Profile as GoogleProfile,
+} from "passport-google-oauth20";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import jwt from "jsonwebtoken";
@@ -13,7 +16,6 @@ import userRouter from "./routes/users";
 import authRoutes from "./routes/auth";
 import { env } from "./env";
 import { getGoogleTokensForUser } from "./lib/google";
-import { RequestHandler } from "express";
 
 // User type definition for TypeScript since we can't import it directly from Prisma
 type User = {
@@ -55,6 +57,19 @@ app.use(
 
 // @ts-ignore // Keep ignore for persistent type error
 app.use(passport.initialize());
+
+// --- Remove Temporary Debugging Route ---
+// app.get("/api/channels", (req, res, next) => {
+//   if (req.query.q) {
+//     console.log(`[DEBUG] Received GET /api/channels with q=${req.query.q}`);
+//     return res.status(200).json({ debug: true, query: req.query.q });
+//   } else {
+//     // If no query param, pass to the next route (the main router)
+//     console.log("[DEBUG] Received GET /api/channels without q, passing to main router.");
+//     next();
+//   }
+// });
+// --- End Remove Temporary Debugging Route ---
 
 // Mount routes
 app.use("/api", router);
@@ -182,11 +197,25 @@ app.get(
   })
 );
 
-// Define handler separately
-const googleCallbackHandler: RequestHandler = (req, res, next) => {
+// Define an interface for the authInfo object passed from the Google strategy
+interface GoogleAuthInfo {
+  accessToken: string;
+  refreshToken: string;
+  expires?: Date | number;
+  profile: GoogleProfile;
+}
+
+// Define handler separately and mark it async
+const googleCallbackHandler: RequestHandler = async (req, res, next) => {
   console.log(
     "[Google Callback Handler] User object received from Passport:",
     req.user
+  );
+  // Log authInfo to see if tokens are present
+  console.log(
+    "[Google Callback Handler] AuthInfo object received from Passport:",
+    // @ts-ignore - req.authInfo is not strongly typed by default
+    req.authInfo
   );
 
   // Cast needed because Passport types req.user loosely
@@ -231,6 +260,79 @@ const googleCallbackHandler: RequestHandler = (req, res, next) => {
     sameSite: "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
+
+  // Get Google tokens from authInfo and set google_tokens cookie
+  const authInfo = req.authInfo as GoogleAuthInfo | undefined;
+  if (authInfo && authInfo.accessToken && authInfo.refreshToken) {
+    console.log(
+      `[Google Callback Handler] Setting google_tokens cookie and saving tokens for user ${user.id}`
+    );
+
+    // Prepare data for DB and cookie
+    const { accessToken, refreshToken, expires } = authInfo;
+    // Extract scope and token_type from the credentials/profile if available
+    // Note: These might not always be directly in authInfo, adjust as needed based on passport strategy results
+    const scope = authInfo.profile?.provider; // Example: Trying to get scope from profile
+    const token_type = "Bearer"; // Typically Bearer for Google OAuth
+
+    const expiryDate = expires
+      ? typeof expires === "number"
+        ? new Date(expires) // Assume it's a timestamp if number
+        : new Date(expires).toString() !== "Invalid Date"
+        ? new Date(expires)
+        : new Date(Date.now() + 3600 * 1000) // Use current time + 1 hour if expires is invalid/missing
+      : new Date(Date.now() + 3600 * 1000);
+
+    const googleTokensForCookie = {
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expiry_date: expiryDate.getTime(), // Use timestamp for cookie
+      // Optionally include scope/type in cookie if needed client-side, but keep it minimal
+    };
+
+    // Save tokens to database (now directly awaited)
+    try {
+      await prisma.googleToken.upsert({
+        where: { userId: user.id },
+        update: {
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+          expiryDate: expiryDate, // Save Date object
+          scope: scope, // Save scope
+          tokenType: token_type, // Save token_type
+        },
+        create: {
+          userId: user.id,
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+          expiryDate: expiryDate, // Save Date object
+          scope: scope, // Save scope
+          tokenType: token_type, // Save token_type
+        },
+      });
+      console.log(
+        `[Google Callback Handler] Google tokens saved to database for user ${user.id}`
+      );
+    } catch (error) {
+      console.error(
+        "[Google Callback Handler] Error saving Google tokens to database:",
+        error
+      );
+      // Decide if you want to proceed without saving tokens or return an error
+    }
+
+    // Set cookie
+    res.cookie("google_tokens", JSON.stringify(googleTokensForCookie), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+  } else {
+    console.log("[Google Callback Handler] No Google tokens found in authInfo");
+  }
+
   res.cookie("auth_success", "true", {
     maxAge: 60 * 1000,
     sameSite: "lax",

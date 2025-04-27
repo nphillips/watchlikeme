@@ -105,9 +105,11 @@ model GoogleToken {
   id             String   @id @default(uuid())
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId         String   @unique
-  accessToken    String
-  refreshToken   String
+  accessToken    String   @db.Text // Use Text for potentially long tokens
+  refreshToken   String   @db.Text // Use Text for potentially long tokens
   expiryDate     DateTime
+  scope          String?  // Add scope field (optional)
+  tokenType      String?  // Add token_type field (optional)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

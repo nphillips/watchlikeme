@@ -57,9 +57,10 @@ export async function POST(request: Request) {
     }
 
     // Get the JWT token and user data from the response
-    const { token, user } = await loginResponse.json();
+    const backendResponseData = await loginResponse.json();
+    const { user } = backendResponseData;
 
-    // Set JWT token in a cookie
+    // Create the base JSON response for the browser
     const response = NextResponse.json(
       {
         message: "Logged in successfully",
@@ -72,68 +73,28 @@ export async function POST(request: Request) {
       { status: 200 }
     );
 
-    // Log token setting
-    console.log("Setting token cookie for user:", user.id);
-
-    response.cookies.set("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-    });
-
-    // Also set a non-httpOnly version of the token for debugging
-    response.cookies.set("auth_token", token, {
-      httpOnly: false,
-      secure: false,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-    });
-
-    // Also set a non-httpOnly cookie for debugging
-    response.cookies.set("auth_debug", "true", {
-      httpOnly: false,
-      secure: false,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-    });
-
-    // If user has Google auth, retrieve their Google tokens
-    if (user.hasGoogleAuth) {
-      try {
-        // Fetch Google tokens from backend
-        const tokensResponse = await fetch(
-          `${env.BACKEND_URL}/api/users/${user.id}/google-tokens`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (tokensResponse.ok) {
-          const { tokens } = await tokensResponse.json();
-
-          if (tokens) {
-            // Save the Google tokens in a cookie
-            response.cookies.set("google_tokens", tokens, {
-              httpOnly: true,
-              secure: process.env.NODE_ENV === "production",
-              sameSite: "lax",
-              path: "/",
-              maxAge: 30 * 24 * 60 * 60, // 30 days
-            });
-
-            console.log("Restored Google tokens for linked account");
-          }
-        }
-      } catch (tokenError) {
-        console.error("Error retrieving Google tokens:", tokenError);
-        // Continue without Google tokens, user can re-link if needed
-      }
+    // Forward Set-Cookie headers from the backend response
+    const backendSetCookie = loginResponse.headers.get("set-cookie");
+    if (backendSetCookie) {
+      // We might receive multiple Set-Cookie headers, split them properly
+      // Note: This basic split might need refinement if cookie values contain commas
+      const cookies = backendSetCookie.split(/,(?=[^;]*=)/);
+      cookies.forEach((cookie) => {
+        const [nameValue, ...rest] = cookie.trim().split(";");
+        const [name, value] = nameValue.split("=");
+        // Reconstruct the cookie string for the header
+        // IMPORTANT: `response.cookies.set` is for setting individual cookies,
+        // to forward raw headers, we append to the 'set-cookie' header directly.
+        response.headers.append("set-cookie", cookie.trim());
+      });
+      console.log(
+        "Forwarded Set-Cookie headers from backend:",
+        backendSetCookie
+      );
+    } else {
+      console.log(
+        "No Set-Cookie headers received from backend login response."
+      );
     }
 
     return response;

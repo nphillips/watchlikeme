@@ -1,56 +1,67 @@
+console.log("--- seed.ts execution started ---");
+
 import path from "path";
 import dotenv from "dotenv";
 import bcrypt from "bcryptjs";
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+
+try {
+  console.log("Attempting to load .env...");
+  dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+  console.log(".env loaded. DATABASE_URL set:", !!process.env.DATABASE_URL);
+} catch (dotenvError) {
+  console.error("ERROR loading .env:", dotenvError);
+  // Decide if you want to exit if .env fails
+  // process.exit(1);
+}
 
 import { PrismaClient, Role } from "@prisma/client";
 
+console.log("Attempting to instantiate PrismaClient...");
 const prisma = new PrismaClient();
+console.log("PrismaClient instantiated.");
+
+// Helper function for delay
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function main() {
-  console.log("🌱  Seeding database...");
+  console.log("🌱 Seeding database... START");
+  console.log("Waiting 3 seconds for DB to potentially settle after reset...");
+  await delay(3000); // Add 3-second delay
+  console.log("Wait complete.");
 
-  // —— Cleanup existing data ——
+  // —— Cleanup existing data (COMMENTED OUT FOR TESTING) ——
+  /*
+  console.log("--- Cleaning up existing data ---");
   await prisma.collectionItem.deleteMany();
   await prisma.collection.deleteMany();
   await prisma.video.deleteMany();
   await prisma.channel.deleteMany();
+  await prisma.googleToken.deleteMany(); 
   await prisma.user.deleteMany();
+  console.log("✓ Cleanup complete.");
+  */
 
   // Hash a password for native users
+  console.log("--- Hashing password ---");
   const hashedPassword = await bcrypt.hash(
     process.env.DEFAULT_PASSWORD || "password123",
     10
   );
+  console.log("✓ Password hashed.");
 
   // —— Create users with different authentication methods ——
-
-  // 1. Google OAuth only user (no WatchLikeMe password)
+  console.log("--- Creating Users ---");
   const googleFirst = await prisma.user.create({
     data: {
       email: process.env.GOOGLE_TEST_EMAIL || "test@test.com",
       username: "google-first",
       googleId: process.env.GOOGLE_TEST_ID || "google_oauth_id_placeholder",
+      password: hashedPassword, // Add hashed password
       name: "Google First User",
       image: "https://i.pravatar.cc/150?img=1",
       role: Role.USER,
     },
   });
-
-  // Add Google tokens for googleFirst
-  await prisma.googleToken.create({
-    data: {
-      userId: googleFirst.id,
-      accessToken:
-        process.env.GOOGLE_TEST_ACCESS_TOKEN || "test_access_token_googleFirst",
-      refreshToken:
-        process.env.GOOGLE_TEST_REFRESH_TOKEN ||
-        "test_refresh_token_googleFirst",
-      expiryDate: new Date(Date.now() + 3600000), // 1 hour from now
-    },
-  });
-
-  // 2. WatchLikeMe only user (no Google account linked)
   const bob = await prisma.user.create({
     data: {
       email: "bob@example.com",
@@ -61,8 +72,6 @@ async function main() {
       password: hashedPassword,
     },
   });
-
-  // 3. Hybrid user (both WatchLikeMe password and Google OAuth linked)
   const hybrid = await prisma.user.create({
     data: {
       email: process.env.GOOGLE_TEST_EMAIL_2 || "charlie@example.com",
@@ -74,8 +83,29 @@ async function main() {
       password: hashedPassword,
     },
   });
+  console.log("✓ Users created:");
+  console.log({ googleFirst, bob, hybrid });
+
+  // Add Google tokens for googleFirst
+  console.log("--- Creating Google Token for googleFirst ---");
+  await prisma.googleToken.create({
+    data: {
+      userId: googleFirst.id,
+      accessToken:
+        process.env.GOOGLE_TEST_ACCESS_TOKEN || "test_access_token_googleFirst",
+      refreshToken:
+        process.env.GOOGLE_TEST_REFRESH_TOKEN ||
+        "test_refresh_token_googleFirst",
+      expiryDate: new Date(Date.now() + 3600000), // 1 hour from now
+      // Add dummy scope/type if needed for testing, or leave null
+      // scope: "test_scope",
+      // tokenType: "Bearer",
+    },
+  });
+  console.log("✓ Google Token for googleFirst created.");
 
   // Add Google tokens for hybrid
+  console.log("--- Creating Google Token for hybrid ---");
   await prisma.googleToken.create({
     data: {
       userId: hybrid.id,
@@ -84,10 +114,15 @@ async function main() {
       refreshToken:
         process.env.GOOGLE_TEST_REFRESH_TOKEN_2 || "test_refresh_token_hybrid",
       expiryDate: new Date(Date.now() + 3600000), // 1 hour from now
+      // Add dummy scope/type if needed for testing, or leave null
+      // scope: "test_scope_hybrid",
+      // tokenType: "Bearer",
     },
   });
+  console.log("✓ Google Token for hybrid created.");
 
   // —— Create realistic tech channels ——
+  console.log("--- Creating Channels ---");
   const verge = await prisma.channel.create({
     data: {
       youtubeId: "UCddiUEpeqJcYeBxFu_BnGOA",
@@ -98,7 +133,6 @@ async function main() {
       subscribers: { connect: [{ id: googleFirst.id }, { id: hybrid.id }] },
     },
   });
-
   const ltt = await prisma.channel.create({
     data: {
       youtubeId: "UCXuqSBlHAE6Xw-yeJA0Tunw",
@@ -109,7 +143,6 @@ async function main() {
       subscribers: { connect: [{ id: bob.id }, { id: hybrid.id }] },
     },
   });
-
   const mkbhd = await prisma.channel.create({
     data: {
       youtubeId: "UCBJycsmduvYEL83R_U4JriQ",
@@ -122,8 +155,11 @@ async function main() {
       },
     },
   });
+  console.log("✓ Channels created.");
+  console.log({ verge, ltt, mkbhd });
 
   // —— Create some realistic videos ——
+  console.log("--- Creating Videos ---");
   const vergeVideo = await prisma.video.create({
     data: {
       youtubeId: "verge2024",
@@ -133,7 +169,6 @@ async function main() {
       channelId: verge.id,
     },
   });
-
   const lttVideo = await prisma.video.create({
     data: {
       youtubeId: "lttgaming",
@@ -143,7 +178,6 @@ async function main() {
       channelId: ltt.id,
     },
   });
-
   const mkbhdVideo = await prisma.video.create({
     data: {
       youtubeId: "iphone15review",
@@ -153,8 +187,11 @@ async function main() {
       channelId: mkbhd.id,
     },
   });
+  console.log("✓ Videos created.");
+  console.log({ vergeVideo, lttVideo, mkbhdVideo });
 
   // —— Create collections for googleFirst ——
+  console.log("--- Creating Collections for googleFirst ---");
   await prisma.collection.create({
     data: {
       slug: "favorites",
@@ -167,7 +204,7 @@ async function main() {
       },
     },
   });
-
+  console.log("✓ Collection 1 for googleFirst created.");
   await prisma.collection.create({
     data: {
       slug: "untitled",
@@ -180,7 +217,7 @@ async function main() {
       },
     },
   });
-
+  console.log("✓ Collection 2 for googleFirst created.");
   await prisma.collection.create({
     data: {
       slug: "watch-later",
@@ -193,8 +230,10 @@ async function main() {
       },
     },
   });
+  console.log("✓ Collection 3 for googleFirst created.");
 
   // —— Create collections for Bob ——
+  console.log("--- Creating Collections for Bob ---");
   await prisma.collection.create({
     data: {
       slug: "tech-channels",
@@ -207,7 +246,7 @@ async function main() {
       },
     },
   });
-
+  console.log("✓ Collection 1 for Bob created.");
   await prisma.collection.create({
     data: {
       slug: "untitled",
@@ -220,8 +259,10 @@ async function main() {
       },
     },
   });
+  console.log("✓ Collection 2 for Bob created.");
 
   // —— Create collections for hybrid ——
+  console.log("--- Creating Collections for hybrid ---");
   await prisma.collection.create({
     data: {
       slug: "tech-mix",
@@ -238,7 +279,7 @@ async function main() {
       },
     },
   });
-
+  console.log("✓ Collection 1 for hybrid created.");
   await prisma.collection.create({
     data: {
       slug: "untitled",
@@ -251,8 +292,9 @@ async function main() {
       },
     },
   });
+  console.log("✓ Collection 2 for hybrid created.");
 
-  console.log("✅  Seeding complete!");
+  console.log("✅ Seeding complete!");
 }
 
 main()

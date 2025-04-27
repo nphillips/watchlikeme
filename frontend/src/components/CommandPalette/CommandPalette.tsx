@@ -59,7 +59,7 @@ export function CommandPalette({
   const { data: ytResults = [], error: ytError } = useSWR<Array<any>>(
     () =>
       open && query.length > 0
-        ? `/api/channels?q=${encodeURIComponent(query)}`
+        ? `/api/channels/search?q=${encodeURIComponent(query)}`
         : null,
     fetcher
   );

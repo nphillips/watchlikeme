@@ -107,15 +107,25 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Create new user with plain password
+    // 2. Create new user
+    const cookieStore = await cookies();
+    const googleRegisterId = cookieStore.get("google_register_id")?.value;
+
+    const userDataToCreate: { [key: string]: any } = {
+      username,
+      email,
+      password, // Send plain password
+    };
+
+    if (googleRegisterId) {
+      userDataToCreate.googleId = googleRegisterId;
+      console.log(`Including googleId ${googleRegisterId} in user creation.`);
+    }
+
     const createUserResponse = await fetch(`${env.BACKEND_URL}/api/users`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username,
-        email,
-        password, // Send plain password
-      }),
+      body: JSON.stringify(userDataToCreate),
     });
 
     if (!createUserResponse.ok) {
@@ -165,6 +175,12 @@ export async function POST(request: Request) {
       path: "/",
       maxAge: 7 * 24 * 60 * 60, // 7 days
     });
+
+    // Clear the temporary registration cookie if it exists
+    if (googleRegisterId) {
+      response.cookies.delete("google_register_id");
+      console.log("Cleared google_register_id cookie.");
+    }
 
     return response;
   } catch (error) {

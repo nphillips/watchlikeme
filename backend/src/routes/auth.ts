@@ -23,6 +23,7 @@ export const verifyToken: express.RequestHandler = (req, res, next) => {
       role: string;
     };
 
+    // Assign the specific type
     req.user = {
       id: payload.sub,
       email: payload.email,
@@ -85,6 +86,47 @@ router.post("/login", async (req, res) => {
       { expiresIn: "7d" }
     );
 
+    // Set the token cookie
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    // Check if user has Google tokens and set google_tokens cookie
+    try {
+      console.log(
+        `[Login Route] Checking for Google tokens for user: ${user.id}`
+      );
+      const googleTokens = await getGoogleTokensForUser(user.id);
+      console.log(
+        `[Login Route] Result from getGoogleTokensForUser:`,
+        googleTokens
+      );
+      if (googleTokens) {
+        console.log(
+          `[Login Route] Found Google tokens. Setting google_tokens cookie for user ${user.id}`
+        );
+        res.cookie("google_tokens", JSON.stringify(googleTokens), {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+      } else {
+        console.log(
+          `[Login Route] No Google tokens found in DB for user ${user.id}.`
+        );
+      }
+    } catch (error) {
+      console.error(
+        `[Login Route] Error checking/setting google_tokens cookie for user ${user.id}:`,
+        error
+      );
+    }
+
     return res.json({
       token,
       user: {
@@ -123,6 +165,31 @@ router.post("/google-login", async (req, res) => {
       { expiresIn: "7d" }
     );
 
+    // Set the token cookie
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    // Check if user has Google tokens and set google_tokens cookie
+    try {
+      const googleTokens = await getGoogleTokensForUser(user.id);
+      if (googleTokens) {
+        console.log(`Setting google_tokens cookie for user ${user.id}`);
+        res.cookie("google_tokens", JSON.stringify(googleTokens), {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+      }
+    } catch (error) {
+      console.error("Error setting google_tokens cookie:", error);
+    }
+
     return res.json({
       token,
       user: {
@@ -142,7 +209,12 @@ router.post("/google-login", async (req, res) => {
 router.post("/link-google", verifyToken, async (req, res) => {
   try {
     const { googleId, googleEmail, googleTokens } = req.body;
-    const userId = req.user.id;
+    // Add check for req.user
+    if (!req.user) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+    // Use type assertion to access id
+    const userId = (req.user as { id: string }).id;
 
     if (!googleId) {
       return res.status(400).json({ message: "Google ID is required" });
@@ -178,7 +250,8 @@ router.post("/link-google", verifyToken, async (req, res) => {
           typeof googleTokens === "string"
             ? JSON.parse(googleTokens)
             : googleTokens;
-        const { access_token, refresh_token, expiry_date } = parsedTokens;
+        const { access_token, refresh_token, expiry_date, scope, token_type } =
+          parsedTokens;
 
         await prisma.googleToken.upsert({
           where: { userId },
@@ -186,12 +259,16 @@ router.post("/link-google", verifyToken, async (req, res) => {
             accessToken: access_token!,
             refreshToken: refresh_token!,
             expiryDate: new Date(expiry_date!),
+            scope: scope,
+            tokenType: token_type,
           },
           create: {
             userId,
             accessToken: access_token!,
             refreshToken: refresh_token!,
             expiryDate: new Date(expiry_date!),
+            scope: scope,
+            tokenType: token_type,
           },
         });
 
@@ -208,40 +285,6 @@ router.post("/link-google", verifyToken, async (req, res) => {
   } catch (error) {
     console.error("Error linking Google account:", error);
     return res.status(500).json({ message: "Server error" });
-  }
-});
-
-router.get("/me/google-tokens", verifyToken, async (req, res, next) => {
-  try {
-    const userId = req.user.id;
-    const tokens = await getGoogleTokensForUser(userId);
-    if (!tokens) {
-      return res.status(404).json({ error: "No Google tokens found" });
-    }
-    return res.json({
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
-      expiry_date: tokens.expiry_date,
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.get("/users/me/google-tokens", verifyToken, async (req, res, next) => {
-  try {
-    const userId = req.user.id;
-    const tokens = await getGoogleTokensForUser(userId);
-    if (!tokens) {
-      return res.status(404).json({ error: "No Google tokens found" });
-    }
-    return res.json({
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
-      expiry_date: tokens.expiry_date,
-    });
-  } catch (err) {
-    next(err);
   }
 });
 

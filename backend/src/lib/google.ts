@@ -8,6 +8,8 @@ export async function getGoogleTokensForUser(userId: string): Promise<{
   access_token: string;
   refresh_token: string;
   expiry_date: number;
+  scope?: string | null;
+  token_type?: string | null;
 } | null> {
   const record = await prisma.googleToken.findUnique({
     where: { userId },
@@ -15,6 +17,8 @@ export async function getGoogleTokensForUser(userId: string): Promise<{
       accessToken: true,
       refreshToken: true,
       expiryDate: true,
+      scope: true,
+      tokenType: true,
     },
   });
   if (!record) return null;
@@ -23,5 +27,7 @@ export async function getGoogleTokensForUser(userId: string): Promise<{
     refresh_token: record.refreshToken,
     // convert JS Date → timestamp ms (or .getTime())
     expiry_date: record.expiryDate.getTime(),
+    scope: record.scope,
+    token_type: record.tokenType,
   };
 }

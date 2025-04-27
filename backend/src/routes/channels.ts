@@ -6,51 +6,34 @@ import {
   fetchChannelDetails,
 } from "../lib/youtube-utils";
 import { prisma } from "../lib/prisma";
-import { google } from "googleapis";
+import { google, youtube_v3 } from "googleapis";
+import { GaxiosResponse } from "gaxios";
+import { OAuth2Client } from "google-auth-library";
 
 const router = Router();
 
+// --- Handler for GET /api/channels (Subscriptions Only) ---
 router.get("/", authenticateToken, async (req, res: Response) => {
-  console.log("[Channels Route] Incoming request:", {
-    path: req.path,
-    method: req.method,
-    originalUrl: req.originalUrl,
-    baseUrl: req.baseUrl,
-  });
+  console.log("[Channels Route - Subscriptions] Incoming request");
 
   try {
     const authInfo = req.watchLikeMeAuthInfo;
-
     if (!authInfo) {
-      console.error(
-        "[Channels Route] Authentication info missing after middleware."
-      );
-      return res
-        .status(401)
-        .json({ error: "Authentication information not found." });
+      console.error("[Channels Route - Subscriptions] Auth info missing.");
+      return res.status(401).json({ error: "Auth info not found." });
     }
-
     const accessToken = authInfo.accessToken;
     const userId = authInfo.id;
     const youtubeClient = authInfo.oauth2Client;
 
-    console.log("[Channels Route] Starting request with:", {
-      hasAccessToken: !!accessToken,
-      accessTokenLength: accessToken?.length,
-      userId,
-    });
-
-    if (!accessToken) {
-      console.error(
-        "[Channels Route] No Google access token found in auth info"
-      );
-      return res.status(401).json({ error: "No Google access token found" });
+    if (!accessToken || !youtubeClient) {
+      console.error("[Channels Route - Subscriptions] Google auth missing.");
+      return res.status(401).json({ error: "Google auth required" });
     }
 
-    console.log("[Channels Route] Using OAuth2 client from middleware");
     const youtube = google.youtube({ version: "v3", auth: youtubeClient });
 
-    console.log("[Channels Route] Fetching subscriptions from YouTube API...");
+    console.log("[Channels Route - Subscriptions] Fetching subscriptions...");
     try {
       const response = await youtube.subscriptions.list({
         part: ["snippet"],
@@ -58,45 +41,36 @@ router.get("/", authenticateToken, async (req, res: Response) => {
         maxResults: 50,
       });
 
-      console.log("[Channels Route] YouTube API response:", {
-        status: response.status,
-        hasItems: !!response.data.items,
-        itemCount: response.data.items?.length,
-      });
+      console.log(
+        "[Channels Route - Subscriptions] YouTube Subs API response status:",
+        response.status
+      );
 
-      if (!response.data.items) {
-        console.log("[Channels Route] No channels found in response");
-        return res.json([]);
-      }
-
-      const channelIds = response.data.items
+      const subscriptionItems = response.data.items || [];
+      const channelIds = subscriptionItems
         .map((item) => item.snippet?.resourceId?.channelId)
         .filter((id): id is string => typeof id === "string");
 
       if (!channelIds.length) {
         console.log(
-          "[Channels Route] No valid channel IDs found in subscriptions"
+          "[Channels Route - Subscriptions] No valid channel IDs found."
         );
         return res.json([]);
       }
 
       console.log(
-        `[Channels Route] Fetching details for ${channelIds.length} channels...`
+        `[Channels Route - Subscriptions] Fetching details for ${channelIds.length} channels...`
       );
       const detailedChannels = await fetchChannelDetails(
         channelIds,
         accessToken
       );
 
-      console.log(
-        `[Channels Route] Received details for ${detailedChannels.length} channels`
-      );
-
+      // --- Database Mirroring (Keep as is) ---
       if (userId) {
         const savedChannelData = [];
         for (const channelData of detailedChannels) {
           if (!channelData.youtubeId || !channelData.title) continue;
-
           const channel = await prisma.channel.upsert({
             where: { youtubeId: channelData.youtubeId },
             update: {
@@ -117,26 +91,17 @@ router.get("/", authenticateToken, async (req, res: Response) => {
                 : undefined,
             },
           });
-
           await prisma.user.update({
             where: { id: userId },
-            data: {
-              subscriptions: {
-                connect: { id: channel.id },
-              },
-            },
+            data: { subscriptions: { connect: { id: channel.id } } },
           });
           savedChannelData.push(channel);
         }
-
         console.log(
-          `Saved/Updated ${savedChannelData.length} channels to database for user ${userId}`
-        );
-      } else {
-        console.log(
-          "[Channels Route] No user ID found, skipping database mirroring"
+          `[Channels Route - Subscriptions] Saved/Updated ${savedChannelData.length} channels for user ${userId}`
         );
       }
+      // --- End Database Mirroring ---
 
       const formattedChannels = detailedChannels.map((channel) => ({
         id: channel.youtubeId,
@@ -146,11 +111,12 @@ router.get("/", authenticateToken, async (req, res: Response) => {
       }));
 
       console.log(
-        `[Channels Route] Returning ${formattedChannels.length} formatted channels`
+        `[Channels Route - Subscriptions] Returning ${formattedChannels.length} channels.`
       );
       res.json(formattedChannels);
     } catch (youtubeError) {
-      console.error("YouTube API error:", {
+      // --- Subscription API Error Handling (Keep as is, update console logs) ---
+      console.error("[Channels Route - Subscriptions] YouTube API error:", {
         error:
           youtubeError instanceof Error
             ? youtubeError.message
@@ -162,33 +128,154 @@ router.get("/", authenticateToken, async (req, res: Response) => {
         youtubeError instanceof Error &&
         youtubeError.message.includes("quota")
       ) {
-        return res.status(429).json({
-          error: "YouTube API quota exceeded.",
-          details: youtubeError.message,
-        });
+        return res.status(429).json({ error: "YouTube API quota exceeded." });
       }
       if (
         youtubeError instanceof Error &&
         (youtubeError.message.includes("invalid credential") ||
           youtubeError.message.includes("invalid grant"))
       ) {
-        return res.status(403).json({
-          error: "Google authentication failed or token expired.",
-          details: youtubeError.message,
-        });
+        return res.status(403).json({ error: "Google authentication failed." });
       }
       throw youtubeError;
+      // --- End Subscription API Error Handling ---
     }
   } catch (error) {
-    console.error("Error in channels route:", {
+    // --- Outer Error Handling (Keep as is, update console logs) ---
+    console.error("[Channels Route - Subscriptions] Error:", {
       error: error instanceof Error ? error.message : "Unknown error",
       stack: error instanceof Error ? error.stack : undefined,
       name: error instanceof Error ? error.name : undefined,
     });
-    res.status(500).json({
-      error: "Failed to fetch channels",
-      details: error instanceof Error ? error.message : "Unknown error",
+    res.status(500).json({ error: "Failed to fetch subscriptions" });
+    // --- End Outer Error Handling ---
+  }
+});
+
+// --- Handler for GET /api/channels/search ---
+router.get("/search", authenticateToken, async (req, res: Response) => {
+  console.log(
+    "[Channels Route - Search] Incoming request with query:",
+    req.query
+  );
+
+  try {
+    const authInfo = req.watchLikeMeAuthInfo;
+    if (!authInfo || !authInfo.oauth2Client) {
+      console.error(
+        "[Channels Route - Search] Auth info or OAuth2Client missing."
+      );
+      return res.status(401).json({ error: "Google authentication required." });
+    }
+
+    const youtubeClient = authInfo.oauth2Client;
+    const searchQuery = req.query.q as string | undefined;
+
+    if (!searchQuery || searchQuery.trim().length === 0) {
+      console.log("[Channels Route - Search] Empty search query.");
+      return res.status(400).json({ error: "Search query cannot be empty" });
+    }
+
+    const youtube = google.youtube({ version: "v3", auth: youtubeClient });
+
+    console.log(
+      `[Channels Route - Search] Performing YouTube search for: "${searchQuery}"`
+    );
+    try {
+      // @ts-ignore - Suppress confusing overload/type error for search.list
+      const searchResponse = await youtube.search.list({
+        part: ["snippet"],
+        q: searchQuery,
+        type: "channel,video",
+        maxResults: 10,
+      });
+
+      console.log(
+        "[Channels Route - Search] YouTube Search API response status:",
+        // @ts-ignore
+        searchResponse.status
+      );
+
+      // @ts-ignore
+      const searchResults = searchResponse.data.items || [];
+      // --- Result Formatting (Keep as is) ---
+      const formattedResults = searchResults
+        .map((item: youtube_v3.Schema$SearchResult) => {
+          const snippet = item.snippet;
+          const idInfo = item.id;
+          if (!snippet || !idInfo) return null;
+          let youtubeId: string | undefined;
+          let itemKind: "channel" | "video" | undefined;
+          if (idInfo.kind === "youtube#channel" && idInfo.channelId) {
+            youtubeId = idInfo.channelId;
+            itemKind = "channel";
+          } else if (idInfo.kind === "youtube#video" && idInfo.videoId) {
+            youtubeId = idInfo.videoId;
+            itemKind = "video";
+          }
+          if (!youtubeId || !itemKind || !snippet.title) return null;
+          return {
+            id: {
+              kind: idInfo.kind,
+              videoId: itemKind === "video" ? youtubeId : undefined,
+              channelId: itemKind === "channel" ? youtubeId : undefined,
+            },
+            snippet: {
+              title: snippet.title,
+              channelTitle: snippet.channelTitle,
+              thumbnails: {
+                default: snippet.thumbnails?.default,
+                medium: snippet.thumbnails?.medium,
+                high: snippet.thumbnails?.high,
+              },
+              publishedAt: snippet.publishedAt,
+              liveBroadcastContent: snippet.liveBroadcastContent,
+            },
+            kind: itemKind,
+          };
+        })
+        .filter(Boolean);
+      // --- End Result Formatting ---
+
+      console.log(
+        `[Channels Route - Search] Returning ${formattedResults.length} results.`
+      );
+      res.json(formattedResults);
+    } catch (youtubeError) {
+      // --- Search API Error Handling (Keep as is, update console logs) ---
+      console.error("[Channels Route - Search] YouTube Search API error:", {
+        error:
+          youtubeError instanceof Error
+            ? youtubeError.message
+            : "Unknown error",
+        stack: youtubeError instanceof Error ? youtubeError.stack : undefined,
+        name: youtubeError instanceof Error ? youtubeError.name : undefined,
+      });
+      if (
+        youtubeError instanceof Error &&
+        youtubeError.message.includes("quota")
+      ) {
+        return res.status(429).json({ error: "YouTube API quota exceeded." });
+      }
+      if (
+        youtubeError instanceof Error &&
+        (youtubeError.message.includes("invalid credential") ||
+          youtubeError.message.includes("invalid grant"))
+      ) {
+        return res.status(403).json({ error: "Google authentication failed." });
+      }
+      throw youtubeError;
+      // --- End Search API Error Handling ---
+    }
+  } catch (error) {
+    // --- Outer Error Handling (Keep as is, update console logs) ---
+    console.error("[Channels Route - Search] Error:", {
+      error: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined,
     });
+    res.status(500).json({ error: "Failed to perform YouTube search" });
+    // --- End Outer Error Handling ---
   }
 });
 
@@ -209,6 +296,15 @@ router.post("/refresh", authenticateToken, async (req, res: Response) => {
 
     const accessToken = authInfo.accessToken;
     const userId = authInfo.id;
+
+    if (!userId || !accessToken) {
+      console.error(
+        "[Refresh Route] Missing userId or accessToken for refresh."
+      );
+      return res
+        .status(400)
+        .json({ error: "User ID and access token are required." });
+    }
 
     const result = await updateSubscriptionDetails(userId, accessToken);
 

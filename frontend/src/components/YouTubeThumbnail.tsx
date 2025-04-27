@@ -63,6 +63,7 @@ export function YouTubeThumbnail({
           alt={alt}
           fill
           sizes={effectiveSize.split(" ")[1]}
+          unoptimized={size === "2xl"}
           className={cn(
             "rounded-full object-cover transition-opacity duration-300 ",
             isImageLoaded ? "opacity-100" : "opacity-0"

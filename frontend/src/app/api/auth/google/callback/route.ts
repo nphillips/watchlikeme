@@ -3,6 +3,9 @@ import { cookies } from "next/headers";
 import { OAuth2Client } from "google-auth-library";
 import { env } from "@/env";
 
+// Define baseUrl at the module scope
+const baseUrl = env.ORIGIN || "http://localhost:3000";
+
 // Check for required environment variables
 if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
   console.error("Missing required environment variables for Google OAuth");
@@ -17,6 +20,9 @@ const oauth2Client = new OAuth2Client(
 
 export async function GET(request: Request) {
   try {
+    // Define backendUrl inside try block
+    const backendUrl = env.BACKEND_URL || "http://localhost:8888";
+
     // Get URL from request
     const url = new URL(request.url);
 
@@ -34,35 +40,24 @@ export async function GET(request: Request) {
       }/api/auth/google/callback`,
     });
 
-    // Make sure we have a base URL for redirects
-    const baseUrl = env.ORIGIN || "http://localhost:3000";
-    const backendUrl = env.BACKEND_URL || "http://localhost:8888";
-
-    // Create a helper function for redirects
-    const redirectTo = (path: string) => {
-      const fullUrl = new URL(path, baseUrl);
-      console.log("Redirecting to:", fullUrl.toString());
-      return NextResponse.redirect(fullUrl);
-    };
-
     // Check if we're linking an account
     const isLinkingAccount = state === "link_account";
 
-    // Handle errors - redirect to home with error message instead of login
+    // Handle errors
     if (error) {
       console.error("OAuth error:", error);
-      return redirectTo(
-        isLinkingAccount ? "/" : `/?error=${encodeURIComponent(error)}`
-      );
+      const redirectPath = isLinkingAccount
+        ? "/"
+        : `/?error=${encodeURIComponent(error)}`;
+      return NextResponse.redirect(new URL(redirectPath, baseUrl));
     }
 
     if (!code) {
       console.error("No code received");
-      return redirectTo(
-        isLinkingAccount
-          ? "/"
-          : `/?error=${encodeURIComponent("no_code_received")}`
-      );
+      const redirectPath = isLinkingAccount
+        ? "/"
+        : `/?error=${encodeURIComponent("no_code_received")}`;
+      return NextResponse.redirect(new URL(redirectPath, baseUrl));
     }
 
     // Make sure the OAuth client has the correct redirect URI
@@ -105,7 +100,9 @@ export async function GET(request: Request) {
 
         if (!token) {
           console.error("No JWT token found for account linking");
-          return redirectTo("/login?error=auth_required");
+          return NextResponse.redirect(
+            new URL("/login?error=auth_required", baseUrl)
+          );
         }
 
         console.log("Using backend URL for account linking:", backendUrl);
@@ -128,16 +125,17 @@ export async function GET(request: Request) {
           if (!linkResult.ok) {
             const errorData = await linkResult.json();
             console.error("Failed to link account:", errorData);
-            return redirectTo(
-              `/?error=${encodeURIComponent(
-                errorData.message || "Failed to link account"
-              )}`
-            );
+            const errorPath = `/?error=${encodeURIComponent(
+              errorData.message || "Failed to link account"
+            )}`;
+            return NextResponse.redirect(new URL(errorPath, baseUrl));
           }
 
           // Create response with cookies
-          const redirectUrl = new URL("/?success=account_linked", baseUrl);
-          const redirectResponse = redirectTo(redirectUrl.toString());
+          const successPath = "/?success=account_linked";
+          const redirectResponse = NextResponse.redirect(
+            new URL(successPath, baseUrl)
+          );
 
           // Store Google tokens in a single cookie as JSON
           const tokensWithExpiry = { ...tokens } as any;
@@ -161,9 +159,10 @@ export async function GET(request: Request) {
           return redirectResponse;
         } catch (linkError) {
           console.error("Account linking error:", linkError);
-          return redirectTo(
-            `/login?error=${encodeURIComponent("failed_to_link_account")}`
-          );
+          const errorPath = `/login?error=${encodeURIComponent(
+            "failed_to_link_account"
+          )}`;
+          return NextResponse.redirect(new URL(errorPath, baseUrl));
         }
       }
 
@@ -185,12 +184,15 @@ export async function GET(request: Request) {
 
         const userData = await checkUserResponse.json();
 
-        // Create response with Google tokens cookie
+        // Prepare redirect response using the helper
+        const redirectUrlPath = userData.exists
+          ? "/"
+          : "/register?fromGoogle=true";
         const redirectResponse = NextResponse.redirect(
-          new URL(userData.exists ? "/" : "/register?fromGoogle=true", baseUrl)
+          new URL(redirectUrlPath, baseUrl)
         );
 
-        // Store Google tokens and set auth_success cookie
+        // Store Google tokens cookie
         const tokensWithExpiry = { ...tokens } as any;
         if (
           tokensWithExpiry.expiry_date === undefined &&
@@ -199,7 +201,6 @@ export async function GET(request: Request) {
           tokensWithExpiry.expiry_date =
             Date.now() + tokensWithExpiry.expires_in * 1000;
         }
-
         const googleTokensJson = JSON.stringify(tokensWithExpiry);
         redirectResponse.cookies.set("google_tokens", googleTokensJson, {
           secure: process.env.NODE_ENV === "production",
@@ -207,6 +208,19 @@ export async function GET(request: Request) {
           path: "/",
           maxAge: 30 * 24 * 60 * 60, // 30 days
         });
+
+        // If registration is needed, set temporary cookie with googleId
+        if (!userData.exists) {
+          console.log(
+            "Setting google_register_id cookie for registration flow."
+          );
+          redirectResponse.cookies.set("google_register_id", googleId, {
+            secure: process.env.NODE_ENV === "production",
+            httpOnly: true,
+            path: "/",
+            maxAge: 5 * 60, // 5 minutes validity
+          });
+        }
 
         // Set auth_success cookie
         redirectResponse.cookies.set("auth_success", "true", {
@@ -219,18 +233,21 @@ export async function GET(request: Request) {
         return redirectResponse;
       } catch (error) {
         console.error("Error in normal auth flow:", error);
-        return redirectTo(
-          `/?error=${encodeURIComponent("authentication_failed")}`
-        );
+        const errorPath = `/?error=${encodeURIComponent(
+          "authentication_failed"
+        )}`;
+        return NextResponse.redirect(new URL(errorPath, baseUrl));
       }
     } catch (error) {
       console.error("Token exchange error:", error);
-      return redirectTo(
-        `/?error=${encodeURIComponent("token_exchange_failed")}`
-      );
+      const errorPath = `/?error=${encodeURIComponent(
+        "token_exchange_failed"
+      )}`;
+      return NextResponse.redirect(new URL(errorPath, baseUrl));
     }
   } catch (error) {
     console.error("Callback error:", error);
-    return redirectTo(`/?error=${encodeURIComponent("authentication_failed")}`);
+    const errorPath = `/?error=${encodeURIComponent("authentication_failed")}`;
+    return NextResponse.redirect(new URL(errorPath, baseUrl));
   }
 }

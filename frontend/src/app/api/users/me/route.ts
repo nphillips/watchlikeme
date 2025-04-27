@@ -36,20 +36,17 @@ export async function GET() {
 
       console.log("JWT verification successful. User ID:", payload.sub);
 
-      // Get user details from the backend
-      const response = await fetch(
-        `${env.BACKEND_URL}/api/users/${payload.sub}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            // Forward all cookies to the backend so it can read google_tokens
-            cookie: cookieStore
-              .getAll()
-              .map((cookie) => `${cookie.name}=${cookie.value}`)
-              .join("; "),
-          },
-        }
-      );
+      // Get user details from the backend using the dedicated /me endpoint
+      const response = await fetch(`${env.BACKEND_URL}/api/users/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          // Forward all cookies to the backend so it can read google_tokens
+          cookie: cookieStore
+            .getAll()
+            .map((cookie) => `${cookie.name}=${cookie.value}`)
+            .join("; "),
+        },
+      });
 
       console.log("Backend API response status:", response.status);
 

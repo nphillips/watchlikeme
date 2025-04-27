@@ -1,8 +1,7 @@
 import { Request, Response, NextFunction, RequestHandler } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../env";
-import { google } from "googleapis"; // Import googleapis
-import { OAuth2Client } from "google-auth-library"; // Import OAuth2Client type
+import { google, Auth } from "googleapis"; // Import googleapis and Auth namespace
 
 // Export the interface so it can be imported elsewhere
 export interface AuthenticatedUserInfo {
@@ -10,7 +9,7 @@ export interface AuthenticatedUserInfo {
   email: string;
   // These are now optional as they depend on google_tokens cookie
   accessToken?: string | null; // Google Access Token
-  oauth2Client?: OAuth2Client | null;
+  oauth2Client?: Auth.OAuth2Client | null;
 }
 
 // Augment Express Request type with a unique property
@@ -23,17 +22,37 @@ declare global {
 }
 
 // Helper to create an OAuth2Client
-function createOAuth2Client(tokens: any): OAuth2Client {
+function createOAuth2Client(tokens: any): Auth.OAuth2Client {
+  console.log(
+    "[Auth Middleware - createOAuth2Client] Tokens received for client init:",
+    tokens // Log the full tokens object received
+  );
   const client = new google.auth.OAuth2(
     env.GOOGLE_CLIENT_ID,
     env.GOOGLE_CLIENT_SECRET,
-    `${env.ORIGIN}/api/auth/google/callback` // Use origin from env
+    `${env.ORIGIN}/api/auth/google/callback`
   );
-  client.setCredentials(tokens);
+
+  // Set credentials using all available fields from the cookie/DB
+  client.setCredentials({
+    refresh_token: tokens.refresh_token,
+    access_token: tokens.access_token,
+    scope: tokens.scope,
+    token_type: tokens.token_type,
+    expiry_date: tokens.expiry_date ? Number(tokens.expiry_date) : undefined,
+    // id_token is usually not needed for client credentials but include if present
+    id_token: tokens.id_token,
+  });
+  console.log(
+    "[Auth Middleware - createOAuth2Client] Credentials set on client:",
+    client.credentials
+  );
+
   return client;
 }
 
 export const authenticateToken: RequestHandler = async (req, res, next) => {
+  console.log("[Auth Middleware] Incoming cookies:", req.cookies);
   // 1. Find WLM token (JWT)
   let token = req.cookies?.token;
   let tokenSource = "cookie";
@@ -90,15 +109,23 @@ export const authenticateToken: RequestHandler = async (req, res, next) => {
             ? JSON.parse(googleTokensCookie)
             : googleTokensCookie;
 
-        if (googleTokens.access_token) {
-          console.log("[Auth Middleware] Found valid Google access token.");
-          const oauth2Client = createOAuth2Client(googleTokens);
-          // Enhance authInfo with Google details
-          authInfo.accessToken = googleTokens.access_token;
+        console.log(
+          "[Auth Middleware] Parsed googleTokens from cookie:",
+          googleTokens
+        );
+
+        if (googleTokens.access_token || googleTokens.refresh_token) {
+          // Check for either token
+          console.log(
+            "[Auth Middleware] Found access_token or refresh_token in parsed tokens."
+          );
+          const oauth2Client = createOAuth2Client(googleTokens); // Pass the full object
+          // Enhance authInfo
+          authInfo.accessToken = googleTokens.access_token || null; // Store access token if present
           authInfo.oauth2Client = oauth2Client;
         } else {
           console.warn(
-            "[Auth Middleware] google_tokens cookie present but missing access_token."
+            "[Auth Middleware] google_tokens cookie present but missing access_token or refresh_token."
           );
         }
       } catch (e) {

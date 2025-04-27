@@ -39,6 +39,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import LeftNav from "@/components/LeftNav";
 
 // SWR fetcher function
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -429,6 +430,7 @@ export default function CollectionPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <Nav />
+      <LeftNav />
       <div className="flex flex-1 flex-col items-center py-10">
         <div className="container w-full px-4 md:px-6">
           <div>

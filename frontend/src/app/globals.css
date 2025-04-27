@@ -2,6 +2,9 @@
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
+:root {
+  --width-left-nav: 18rem;
+}
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);

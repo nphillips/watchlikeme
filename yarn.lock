@@ -359,6 +359,11 @@
     wrap-ansi "^8.1.0"
     wrap-ansi-cjs "npm:wrap-ansi@^7.0.0"
 
+"@isaacs/fs-minipass@^4.0.0":
+  version "4.0.1"
+  dependencies:
+    minipass "^7.0.4"
+
 "@jridgewell/gen-mapping@^0.3.5":
   version "0.3.8"
   dependencies:
@@ -539,6 +544,20 @@
 
 "@nolyfill/is-core-module@1.0.39":
   version "1.0.39"
+
+"@npmcli/agent@^3.0.0":
+  version "3.0.0"
+  dependencies:
+    agent-base "^7.1.0"
+    http-proxy-agent "^7.0.0"
+    https-proxy-agent "^7.0.1"
+    lru-cache "^10.0.1"
+    socks-proxy-agent "^8.0.3"
+
+"@npmcli/fs@^4.0.0":
+  version "4.0.0"
+  dependencies:
+    semver "^7.3.5"
 
 "@open-draft/deferred-promise@^2.2.0":
   version "2.2.0"
@@ -1322,8 +1341,8 @@
     "@typescript-eslint/types" "8.31.0"
     eslint-visitor-keys "^4.2.0"
 
-"@unrs/resolver-binding-darwin-arm64@1.7.1":
-  version "1.7.1"
+"@unrs/resolver-binding-darwin-arm64@1.7.2":
+  version "1.7.2"
 
 "@vercel/nft@0.27.7":
   version "0.27.7"
@@ -1374,6 +1393,9 @@
     "@whatwg-node/promise-helpers" "^1.2.2"
     tslib "^2.6.3"
 
+abbrev@^3.0.0:
+  version "3.0.1"
+
 abbrev@1:
   version "1.1.1"
 
@@ -1402,7 +1424,7 @@ acorn-walk@^8.1.1:
 acorn@^8.11.0, acorn@^8.14.0, acorn@^8.4.1, acorn@^8.6.0:
   version "8.14.1"
 
-agent-base@^7.0.2, agent-base@^7.1.2:
+agent-base@^7.0.2, agent-base@^7.1.0, agent-base@^7.1.2:
   version "7.1.3"
 
 agent-base@6:
@@ -1746,6 +1768,22 @@ busboy@1.6.0:
 bytes@^3.1.2, bytes@3.1.2:
   version "3.1.2"
 
+cacache@^19.0.1:
+  version "19.0.1"
+  dependencies:
+    "@npmcli/fs" "^4.0.0"
+    fs-minipass "^3.0.0"
+    glob "^10.2.2"
+    lru-cache "^10.0.1"
+    minipass "^7.0.3"
+    minipass-collect "^2.0.1"
+    minipass-flush "^1.0.5"
+    minipass-pipeline "^1.2.4"
+    p-map "^7.0.2"
+    ssri "^12.0.0"
+    tar "^7.4.3"
+    unique-filename "^4.0.0"
+
 cacheable-lookup@^5.0.3:
   version "5.0.4"
 
@@ -1818,6 +1856,9 @@ chokidar@^4.0.1:
 
 chownr@^2.0.0:
   version "2.0.0"
+
+chownr@^3.0.0:
+  version "3.0.0"
 
 class-variance-authority@^0.7.1:
   version "0.7.1"
@@ -2224,6 +2265,11 @@ enabled@2.0.x:
 encodeurl@^2.0.0:
   version "2.0.0"
 
+encoding@^0.1.13:
+  version "0.1.13"
+  dependencies:
+    iconv-lite "^0.6.2"
+
 end-of-stream@^1.1.0:
   version "1.4.4"
   dependencies:
@@ -2235,8 +2281,14 @@ enhanced-resolve@^5.18.1:
     graceful-fs "^4.2.4"
     tapable "^2.2.0"
 
+env-paths@^2.2.0:
+  version "2.2.1"
+
 env-paths@^3.0.0:
   version "3.0.0"
+
+err-code@^2.0.2:
+  version "2.0.3"
 
 error-ex@^1.3.1:
   version "1.3.2"
@@ -2672,6 +2724,9 @@ executable@^4.1.0:
   dependencies:
     pify "^2.2.0"
 
+exponential-backoff@^3.1.1:
+  version "3.1.2"
+
 express@^5.1.0:
   version "5.1.0"
   dependencies:
@@ -2937,6 +2992,11 @@ fs-minipass@^2.0.0:
   dependencies:
     minipass "^3.0.0"
 
+fs-minipass@^3.0.0:
+  version "3.0.3"
+  dependencies:
+    minipass "^7.0.3"
+
 fs.realpath@^1.0.0:
   version "1.0.0"
 
@@ -3069,6 +3129,16 @@ glob@^10.0.0:
     package-json-from-dist "^1.0.0"
     path-scurry "^1.11.1"
 
+glob@^10.2.2:
+  version "10.4.5"
+  dependencies:
+    foreground-child "^3.1.0"
+    jackspeak "^3.1.2"
+    minimatch "^9.0.4"
+    minipass "^7.1.2"
+    package-json-from-dist "^1.0.0"
+    path-scurry "^1.11.1"
+
 glob@^7.1.3:
   version "7.2.3"
   dependencies:
@@ -3162,7 +3232,7 @@ got@^11.8.5:
     p-cancelable "^2.0.0"
     responselike "^2.0.0"
 
-graceful-fs@^4.1.6, graceful-fs@^4.2.0, graceful-fs@^4.2.10, graceful-fs@^4.2.4, graceful-fs@^4.2.9:
+graceful-fs@^4.1.6, graceful-fs@^4.2.0, graceful-fs@^4.2.10, graceful-fs@^4.2.4, graceful-fs@^4.2.6, graceful-fs@^4.2.9:
   version "4.2.11"
 
 graphemer@^1.4.0:
@@ -3217,7 +3287,7 @@ hosted-git-info@^7.0.0:
   dependencies:
     lru-cache "^10.0.1"
 
-http-cache-semantics@^4.0.0:
+http-cache-semantics@^4.0.0, http-cache-semantics@^4.1.1:
   version "4.1.1"
 
 http-errors@^2.0.0, http-errors@2.0.0:
@@ -3228,6 +3298,12 @@ http-errors@^2.0.0, http-errors@2.0.0:
     setprototypeof "1.2.0"
     statuses "2.0.1"
     toidentifier "1.0.1"
+
+http-proxy-agent@^7.0.0:
+  version "7.0.2"
+  dependencies:
+    agent-base "^7.1.0"
+    debug "^4.3.4"
 
 http2-wrapper@^1.0.0-beta.5.2:
   version "1.0.3"
@@ -3259,7 +3335,7 @@ human-signals@^2.1.0:
 human-signals@^4.3.0:
   version "4.3.1"
 
-iconv-lite@^0.6.3, iconv-lite@0.6.3:
+iconv-lite@^0.6.2, iconv-lite@^0.6.3, iconv-lite@0.6.3:
   version "0.6.3"
   dependencies:
     safer-buffer ">= 2.1.2 < 3.0.0"
@@ -3297,6 +3373,12 @@ internal-slot@^1.1.0:
     es-errors "^1.3.0"
     hasown "^2.0.2"
     side-channel "^1.1.0"
+
+ip-address@^9.0.5:
+  version "9.0.5"
+  dependencies:
+    jsbn "1.1.0"
+    sprintf-js "^1.1.3"
 
 ipaddr.js@1.9.1:
   version "1.9.1"
@@ -3508,6 +3590,9 @@ isarray@~1.0.0:
 isexe@^2.0.0:
   version "2.0.0"
 
+isexe@^3.1.1:
+  version "3.1.1"
+
 iterator.prototype@^1.1.4:
   version "1.1.5"
   dependencies:
@@ -3535,6 +3620,9 @@ js-yaml@^4.1.0:
   version "4.1.0"
   dependencies:
     argparse "^2.0.1"
+
+jsbn@1.1.0:
+  version "1.1.0"
 
 jsesc@^3.0.2:
   version "3.1.0"
@@ -3782,6 +3870,21 @@ make-dir@^3.1.0:
 make-error@^1.1.1:
   version "1.3.6"
 
+make-fetch-happen@^14.0.3:
+  version "14.0.3"
+  dependencies:
+    "@npmcli/agent" "^3.0.0"
+    cacache "^19.0.1"
+    http-cache-semantics "^4.1.1"
+    minipass "^7.0.2"
+    minipass-fetch "^4.0.0"
+    minipass-flush "^1.0.5"
+    minipass-pipeline "^1.2.4"
+    negotiator "^1.0.0"
+    proc-log "^5.0.0"
+    promise-retry "^2.0.1"
+    ssri "^12.0.0"
+
 math-intrinsics@^1.1.0:
   version "1.1.0"
 
@@ -3869,12 +3972,41 @@ minimatch@^9.0.4:
 minimist@^1.2.0, minimist@^1.2.5, minimist@^1.2.6:
   version "1.2.8"
 
+minipass-collect@^2.0.1:
+  version "2.0.1"
+  dependencies:
+    minipass "^7.0.3"
+
+minipass-fetch@^4.0.0:
+  version "4.0.1"
+  dependencies:
+    minipass "^7.0.3"
+    minipass-sized "^1.0.3"
+    minizlib "^3.0.1"
+  optionalDependencies:
+    encoding "^0.1.13"
+
+minipass-flush@^1.0.5:
+  version "1.0.5"
+  dependencies:
+    minipass "^3.0.0"
+
+minipass-pipeline@^1.2.4:
+  version "1.2.4"
+  dependencies:
+    minipass "^3.0.0"
+
+minipass-sized@^1.0.3:
+  version "1.0.3"
+  dependencies:
+    minipass "^3.0.0"
+
 minipass@^3.0.0:
   version "3.3.6"
   dependencies:
     yallist "^4.0.0"
 
-"minipass@^5.0.0 || ^6.0.2 || ^7.0.0", minipass@^7.1.2:
+"minipass@^5.0.0 || ^6.0.2 || ^7.0.0", minipass@^7.0.2, minipass@^7.0.3, minipass@^7.0.4, minipass@^7.1.2:
   version "7.1.2"
 
 minipass@^5.0.0:
@@ -3886,11 +4018,19 @@ minizlib@^2.1.1:
     minipass "^3.0.0"
     yallist "^4.0.0"
 
+minizlib@^3.0.1:
+  version "3.0.2"
+  dependencies:
+    minipass "^7.1.2"
+
 mkdirp@^1.0.3, mkdirp@^1.0.4:
   version "1.0.4"
 
 mkdirp@^2.1.6:
   version "2.1.6"
+
+mkdirp@^3.0.1:
+  version "3.0.1"
 
 module-definition@^5.0.1:
   version "5.0.1"
@@ -3929,8 +4069,8 @@ mute-stream@^2.0.0:
 nanoid@^3.3.6, nanoid@^3.3.8:
   version "3.3.11"
 
-napi-postinstall@^0.2.1:
-  version "0.2.1"
+napi-postinstall@^0.2.2:
+  version "0.2.2"
 
 natural-compare@^1.4.0:
   version "1.4.0"
@@ -3953,8 +4093,6 @@ netlify@^13.3.4:
 
 next-themes@^0.4.6:
   version "0.4.6"
-  resolved "https://registry.npmjs.org/next-themes/-/next-themes-0.4.6.tgz"
-  integrity sha512-pZvgD5L0IEvX5/9GWyHMf3m8BKiVQwsCMHfoFosXtXBMnaS0ZnIJ9ST4b4NqLVKDEm8QBxoNNGNaBv2JNF6XNA==
 
 next@^15.3.1:
   version "15.3.1"
@@ -4012,6 +4150,11 @@ nopt@^5.0.0:
   version "5.0.0"
   dependencies:
     abbrev "1"
+
+nopt@^8.0.0:
+  version "8.1.0"
+  dependencies:
+    abbrev "^3.0.0"
 
 normalize-package-data@^6.0.0:
   version "6.0.2"
@@ -4204,7 +4347,7 @@ p-locate@^6.0.0:
   dependencies:
     p-limit "^4.0.0"
 
-p-map@^7.0.0:
+p-map@^7.0.0, p-map@^7.0.2:
   version "7.0.3"
 
 p-timeout@^5.0.2:
@@ -4380,6 +4523,16 @@ precinct@^11.0.0:
 prelude-ls@^1.2.1:
   version "1.2.1"
 
+prettier-plugin-tailwindcss@^0.6.11:
+  version "0.6.11"
+  resolved "https://registry.npmjs.org/prettier-plugin-tailwindcss/-/prettier-plugin-tailwindcss-0.6.11.tgz"
+  integrity sha512-YxaYSIvZPAqhrrEpRtonnrXdghZg1irNg4qrjboCXrpybLWVs55cW2N3juhspVJiO0JBvYJT8SYsJpc8OQSnsA==
+
+prettier@^3.5.3:
+  version "3.5.3"
+  resolved "https://registry.npmjs.org/prettier/-/prettier-3.5.3.tgz"
+  integrity sha512-QQtaxnoDJeAkDvDKWCLiwIXkTgRhwYDEQCghU9Z6q03iyek/rxRh/2lC3HB7P8sWT2xC/y5JDctPLBIGzHKbhw==
+
 prisma@^6.6.0:
   version "6.6.0"
   dependencies:
@@ -4388,11 +4541,20 @@ prisma@^6.6.0:
   optionalDependencies:
     fsevents "2.3.3"
 
+proc-log@^5.0.0:
+  version "5.0.0"
+
 process-nextick-args@~2.0.0:
   version "2.0.1"
 
 process@^0.11.10:
   version "0.11.10"
+
+promise-retry@^2.0.1:
+  version "2.0.1"
+  dependencies:
+    err-code "^2.0.2"
+    retry "^0.12.0"
 
 prompts@^2.4.2:
   version "2.4.2"
@@ -4657,6 +4819,9 @@ restore-cursor@^4.0.0:
   dependencies:
     onetime "^5.1.0"
     signal-exit "^3.0.2"
+
+retry@^0.12.0:
+  version "0.12.0"
 
 reusify@^1.0.4:
   version "1.1.0"
@@ -4924,6 +5089,22 @@ slash@^3.0.0, slash@3.0.0:
 slugify@^1.6.6:
   version "1.6.6"
 
+smart-buffer@^4.2.0:
+  version "4.2.0"
+
+socks-proxy-agent@^8.0.3:
+  version "8.0.5"
+  dependencies:
+    agent-base "^7.1.2"
+    debug "^4.3.4"
+    socks "^2.8.3"
+
+socks@^2.8.3:
+  version "2.8.4"
+  dependencies:
+    ip-address "^9.0.5"
+    smart-buffer "^4.2.0"
+
 sonner@^2.0.3:
   version "2.0.3"
 
@@ -4969,6 +5150,14 @@ spdx-expression-parse@^3.0.0:
 
 spdx-license-ids@^3.0.0:
   version "3.0.21"
+
+sprintf-js@^1.1.3:
+  version "1.1.3"
+
+ssri@^12.0.0:
+  version "12.0.0"
+  dependencies:
+    minipass "^7.0.3"
 
 stable-hash@^0.0.5:
   version "0.0.5"
@@ -5185,6 +5374,16 @@ tar@^6.1.11:
     mkdirp "^1.0.3"
     yallist "^4.0.0"
 
+tar@^7.4.3:
+  version "7.4.3"
+  dependencies:
+    "@isaacs/fs-minipass" "^4.0.0"
+    chownr "^3.0.0"
+    minipass "^7.1.2"
+    minizlib "^3.0.1"
+    mkdirp "^3.0.1"
+    yallist "^5.0.0"
+
 text-decoder@^1.1.0:
   version "1.2.3"
   dependencies:
@@ -5196,7 +5395,7 @@ text-hex@1.0.x:
 tiny-invariant@^1.3.3:
   version "1.3.3"
 
-tinyglobby@^0.2.13:
+tinyglobby@^0.2.12, tinyglobby@^0.2.13:
   version "0.2.13"
   dependencies:
     fdir "^6.4.4"
@@ -5404,6 +5603,16 @@ undici-types@~6.21.0:
 unicorn-magic@^0.1.0:
   version "0.1.0"
 
+unique-filename@^4.0.0:
+  version "4.0.0"
+  dependencies:
+    unique-slug "^5.0.0"
+
+unique-slug@^5.0.0:
+  version "5.0.0"
+  dependencies:
+    imurmurhash "^0.1.4"
+
 universalify@^0.2.0:
   version "0.2.0"
 
@@ -5419,27 +5628,27 @@ unpipe@1.0.0:
   version "1.0.0"
 
 unrs-resolver@^1.6.2:
-  version "1.7.1"
+  version "1.7.2"
   dependencies:
-    napi-postinstall "^0.2.1"
+    napi-postinstall "^0.2.2"
   optionalDependencies:
-    "@unrs/resolver-binding-darwin-arm64" "1.7.1"
-    "@unrs/resolver-binding-darwin-x64" "1.7.1"
-    "@unrs/resolver-binding-freebsd-x64" "1.7.1"
-    "@unrs/resolver-binding-linux-arm-gnueabihf" "1.7.1"
-    "@unrs/resolver-binding-linux-arm-musleabihf" "1.7.1"
-    "@unrs/resolver-binding-linux-arm64-gnu" "1.7.1"
-    "@unrs/resolver-binding-linux-arm64-musl" "1.7.1"
-    "@unrs/resolver-binding-linux-ppc64-gnu" "1.7.1"
-    "@unrs/resolver-binding-linux-riscv64-gnu" "1.7.1"
-    "@unrs/resolver-binding-linux-riscv64-musl" "1.7.1"
-    "@unrs/resolver-binding-linux-s390x-gnu" "1.7.1"
-    "@unrs/resolver-binding-linux-x64-gnu" "1.7.1"
-    "@unrs/resolver-binding-linux-x64-musl" "1.7.1"
-    "@unrs/resolver-binding-wasm32-wasi" "1.7.1"
-    "@unrs/resolver-binding-win32-arm64-msvc" "1.7.1"
-    "@unrs/resolver-binding-win32-ia32-msvc" "1.7.1"
-    "@unrs/resolver-binding-win32-x64-msvc" "1.7.1"
+    "@unrs/resolver-binding-darwin-arm64" "1.7.2"
+    "@unrs/resolver-binding-darwin-x64" "1.7.2"
+    "@unrs/resolver-binding-freebsd-x64" "1.7.2"
+    "@unrs/resolver-binding-linux-arm-gnueabihf" "1.7.2"
+    "@unrs/resolver-binding-linux-arm-musleabihf" "1.7.2"
+    "@unrs/resolver-binding-linux-arm64-gnu" "1.7.2"
+    "@unrs/resolver-binding-linux-arm64-musl" "1.7.2"
+    "@unrs/resolver-binding-linux-ppc64-gnu" "1.7.2"
+    "@unrs/resolver-binding-linux-riscv64-gnu" "1.7.2"
+    "@unrs/resolver-binding-linux-riscv64-musl" "1.7.2"
+    "@unrs/resolver-binding-linux-s390x-gnu" "1.7.2"
+    "@unrs/resolver-binding-linux-x64-gnu" "1.7.2"
+    "@unrs/resolver-binding-linux-x64-musl" "1.7.2"
+    "@unrs/resolver-binding-wasm32-wasi" "1.7.2"
+    "@unrs/resolver-binding-win32-arm64-msvc" "1.7.2"
+    "@unrs/resolver-binding-win32-ia32-msvc" "1.7.2"
+    "@unrs/resolver-binding-win32-x64-msvc" "1.7.2"
 
 update-browserslist-db@^1.1.1:
   version "1.1.3"
@@ -5577,6 +5786,11 @@ which@^2.0.1:
   dependencies:
     isexe "^2.0.0"
 
+which@^5.0.0:
+  version "5.0.0"
+  dependencies:
+    isexe "^3.1.1"
+
 wide-align@^1.1.2:
   version "1.1.5"
   dependencies:
@@ -5658,6 +5872,9 @@ yallist@^3.0.2:
 
 yallist@^4.0.0:
   version "4.0.0"
+
+yallist@^5.0.0:
+  version "5.0.0"
 
 yargs-parser@^21.1.1:
   version "21.1.1"

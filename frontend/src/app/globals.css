@@ -4,6 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 :root {
   --width-left-nav: 18rem;
+  --height-nav: 4rem;
 }
 
 @theme inline {

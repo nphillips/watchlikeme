@@ -6,7 +6,6 @@ import Link from "next/link";
 import { getCollections } from "@/lib/api/collections";
 import { UserCollectionsResponse, Collection } from "@/interfaces/index";
 import { useEffect, useState } from "react";
-import Nav from "@/components/Nav";
 import { useAuth } from "@/hooks/useAuth";
 
 // Let's make this a client component to handle loading/error states easily
@@ -60,7 +59,6 @@ export default function CollectionsPage() {
   if (!user) {
     return (
       <div className="flex min-h-screen flex-col">
-        <Nav />
         <div className="flex flex-1 flex-col items-center py-10">
           <p>Please log in to view your collections.</p>
           <Link
@@ -76,7 +74,6 @@ export default function CollectionsPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Nav />
       <div className="flex flex-1 flex-col items-center py-10">
         <div className="container w-full px-4 md:px-6">
           <h1 className="my-4 text-2xl font-bold">Collections</h1>

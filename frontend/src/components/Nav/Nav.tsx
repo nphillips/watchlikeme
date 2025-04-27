@@ -6,8 +6,15 @@ import Link from "next/link";
 import { ModeToggle } from "../mode-toggle";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
+import { LeftNavCollections } from "@/components/LeftNav";
+import Logo from "../Logo";
 
-const Nav = () => {
+// Define props for Nav
+interface NavProps {
+  onMenuClick: () => void;
+}
+
+const Nav = ({ onMenuClick }: NavProps) => {
   const { isAuthenticated, user, loading, handleLinkGoogle } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -47,40 +54,21 @@ const Nav = () => {
 
   return (
     <>
-      <div className="h-15"></div>
-      <div className="dark fixed top-0 right-0 left-0 z-50 flex h-15 flex-[0_0_auto] items-center justify-between border-b border-gray-700 bg-slate-800 text-slate-50 dark:bg-slate-900">
+      <div className="dark fixed top-0 right-0 left-0 z-50 flex h-[var(--height-nav)] flex-[0_0_auto] items-center justify-between border-b border-gray-700 bg-slate-800 text-slate-50 dark:bg-slate-900">
         <div className="flex w-full items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-4">
             <Button
               variant="outline"
               size="icon"
+              className="md:hidden"
               onClick={() => {
-                const leftNav = document.querySelector(
-                  "[data-component='left-nav']",
-                );
-                const main = document.querySelector("[data-container='main']");
-                if (leftNav && main) {
-                  const isNowHidden = leftNav.classList.toggle("hidden");
-                  if (isNowHidden) {
-                    // Left nav is now hidden, remove padding
-                    main.classList.remove("pl-[var(--width-left-nav)]");
-                  } else {
-                    // Left nav is now visible, add padding
-                    main.classList.add("md:pl-[var(--width-left-nav)]");
-                  }
-                }
+                console.log("Nav: Menu button clicked, calling onMenuClick");
+                onMenuClick();
               }}
             >
               <Menu />
             </Button>
-            <div>
-              <Link
-                href="/"
-                className="mb-4 text-2xl font-bold text-slate-300 dark:text-slate-100"
-              >
-                WatchLikeMe
-              </Link>
-            </div>
+            <Logo />
           </div>
           <div>
             <div>

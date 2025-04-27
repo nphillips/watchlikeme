@@ -1,7 +1,6 @@
 "use client";
 
 import { CommandPalette } from "@/components/CommandPalette";
-import Nav from "@/components/Nav";
 import { YouTubeThumbnail } from "@/components/YouTubeThumbnail";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -39,7 +38,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import LeftNav from "@/components/LeftNav";
+import { LeftNav } from "@/components/LeftNav";
 
 // SWR fetcher function
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -394,7 +393,6 @@ export default function CollectionPage() {
     const isForbidden = itemsError.message?.includes("(Status: 403)");
     return (
       <div className="min-h-screen p-4">
-        <Nav />
         <div className="mt-10 text-center text-red-500">
           {isForbidden ? (
             <p>
@@ -417,7 +415,6 @@ export default function CollectionPage() {
   if (!collection) {
     return (
       <div className="flex min-h-screen flex-col">
-        <Nav />
         <div className="flex flex-1 flex-col items-center py-10">
           <div className="container w-full px-4 md:px-6">
             <p>Collection not found.</p>
@@ -428,9 +425,10 @@ export default function CollectionPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <Nav />
-      <LeftNav />
+    <div className="flex min-h-screen flex-col md:pl-[var(--width-left-nav)]">
+      <div className="hidden md:flex">
+        <LeftNav />
+      </div>
       <div className="flex flex-1 flex-col items-center py-10">
         <div className="container w-full px-4 md:px-6">
           <div>
@@ -552,101 +550,6 @@ export default function CollectionPage() {
                 </p>
               )}
             </div>
-          )}
-
-          <h2 className="my-4 text-lg font-bold">Items in Collection</h2>
-
-          {itemsLoading && items.length === 0 && (
-            <div className="flex items-center justify-center">
-              <div className="h-6 w-6 animate-spin rounded-full border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-          )}
-
-          {!itemsLoading && items.length === 0 && (
-            <div className="text-center text-gray-500">
-              No items in this collection yet.
-            </div>
-          )}
-
-          {items.length > 0 && (
-            <ul className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] [grid-template-rows:repeat(2,min-content)] gap-2">
-              {items.map((item) => {
-                const displayItem = item.channel || item.video;
-                const channelInfo = item.channel || item.video?.channel;
-                const isVideo = !!item.video;
-                const isCurrentlyRemoving = removingItemId === item.id;
-
-                if (!displayItem || !channelInfo) {
-                  console.warn(
-                    "Skipping rendering item without display data:",
-                    item,
-                  );
-                  return null;
-                }
-                return (
-                  <li
-                    key={item.id}
-                    className={`flex flex-col items-center justify-center gap-3 rounded-md border p-2 ${
-                      isCurrentlyRemoving ? "opacity-50" : ""
-                    }`}
-                  >
-                    {displayItem.thumbnail ? (
-                      <YouTubeThumbnail
-                        url={displayItem.thumbnail}
-                        alt={displayItem.title}
-                        size="2xl"
-                      />
-                    ) : (
-                      <div className="flex h-24 w-24 items-center justify-center rounded bg-gray-200 text-xs text-gray-400">
-                        No Img
-                      </div>
-                    )}
-                    <span className="flex flex-1 flex-col">
-                      {item.channel ? (
-                        <a
-                          href={`https://www.youtube.com/channel/${item.channel.youtubeId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="line-clamp-1 text-center font-medium hover:underline"
-                        >
-                          {displayItem.title}
-                        </a>
-                      ) : (
-                        <span className="line-clamp-1 font-medium">
-                          {displayItem.title}
-                        </span>
-                      )}
-                      {isVideo && channelInfo && (
-                        <span className="line-clamp-1 text-sm text-gray-500">
-                          Channel:{" "}
-                          <a
-                            href={`https://www.youtube.com/channel/${channelInfo.youtubeId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hover:underline"
-                          >
-                            {channelInfo.title}
-                          </a>
-                        </span>
-                      )}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveItem(item.id)}
-                      disabled={isCurrentlyRemoving}
-                      aria-label="Remove item"
-                    >
-                      {isCurrentlyRemoving ? (
-                        <div className="h-4 w-4 animate-spin rounded-full border-t-2 border-b-2 border-gray-500"></div>
-                      ) : (
-                        <X className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </li>
-                );
-              })}
-            </ul>
           )}
 
           <Dialog open={isEditing} onOpenChange={setIsEditing}>

@@ -1,6 +1,7 @@
 "use client";
 
 import { RegisterForm } from "@/components/auth/register-form";
+import Nav from "@/components/Nav";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -43,19 +44,18 @@ export default function RegisterPage() {
   }, [searchParams]);
 
   return (
-    <div className="px-4 py-8">
-      <div className="max-w-md mx-auto">
-        <h1 className="text-2xl font-bold mb-6 text-center">
-          Create a WatchLikeMe Account
-        </h1>
+    <div className="flex min-h-screen flex-col">
+      <Nav />
+      <div className="flex flex-1 flex-col items-center py-10">
+        <h1 className="mb-6 text-center text-2xl font-bold">Register</h1>
         {isLoading ? (
           <div className="flex justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-blue-500"></div>
           </div>
         ) : (
           <>
             {googleData.email && (
-              <p className="text-center mb-4 text-gray-600">
+              <p className="mb-4 text-center text-gray-600">
                 Complete your registration using your Google account
               </p>
             )}

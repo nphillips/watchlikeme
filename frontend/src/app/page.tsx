@@ -37,7 +37,7 @@ export default function Home() {
               <h2 className="mb-4 text-2xl font-semibold">
                 Welcome to WatchLikeMe
               </h2>
-              <p className="mb-6 text-gray-600">
+              <p className="mb-6 text-balance text-gray-600 dark:text-gray-400">
                 Organize and share your favorite YouTube content.
               </p>
               <div className="flex justify-center gap-4">
@@ -46,12 +46,6 @@ export default function Home() {
                   className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium whitespace-nowrap text-white shadow-sm hover:bg-blue-700"
                 >
                   Log In
-                </Link>
-                <Link
-                  href="/register"
-                  className="inline-flex items-center justify-center rounded-md border border-blue-600 px-4 py-2 text-sm font-medium whitespace-nowrap text-blue-600 shadow-sm hover:bg-blue-50"
-                >
-                  Register
                 </Link>
               </div>
             </div>

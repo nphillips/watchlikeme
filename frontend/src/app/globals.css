@@ -43,8 +43,8 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(0.967 0.003 264.542);
-  --foreground: oklch(0.13 0.028 261.692);
+  --background: oklch(96.8% 0.007 247.896); /* slate-50 */
+  --foreground: oklch(20.8% 0.042 265.755); /* slate-900 */
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.13 0.028 261.692);
   --popover: oklch(1 0 0);
@@ -77,8 +77,8 @@
 }
 
 .dark {
-  --background: oklch(0.21 0.034 264.665);
-  --foreground: oklch(0.985 0.002 247.839);
+  --background: oklch(27.9% 0.041 260.031); /* slate-800 */
+  --foreground: oklch(98.4% 0.003 247.858); /* slate-50 */
   --card: oklch(0.21 0.034 264.665);
   --card-foreground: oklch(0.985 0.002 247.839);
   --popover: oklch(0.21 0.034 264.665);

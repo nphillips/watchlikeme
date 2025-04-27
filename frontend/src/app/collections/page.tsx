@@ -34,7 +34,7 @@ export default function CollectionsPage() {
         } catch (err) {
           console.error("Failed to load collections:", err);
           setError(
-            err instanceof Error ? err.message : "An unknown error occurred"
+            err instanceof Error ? err.message : "An unknown error occurred",
           );
         } finally {
           setCollectionsLoading(false);
@@ -51,21 +51,21 @@ export default function CollectionsPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen p-4 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen p-4">
+      <div className="flex min-h-screen flex-col">
         <Nav />
-        <div className="text-center mt-10">
+        <div className="flex flex-1 flex-col items-center py-10">
           <p>Please log in to view your collections.</p>
           <Link
             href="/login"
-            className="mt-4 inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            className="mt-4 inline-block rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
           >
             Log In
           </Link>
@@ -75,105 +75,109 @@ export default function CollectionsPage() {
   }
 
   return (
-    <div className="min-h-screen p-4">
+    <div className="flex min-h-screen flex-col">
       <Nav />
-      <h1 className="text-2xl font-bold my-4">Collections</h1>
+      <div className="flex flex-1 flex-col items-center py-10">
+        <div className="container w-full px-4 md:px-6">
+          <h1 className="my-4 text-2xl font-bold">Collections</h1>
 
-      {collectionsLoading && <p>Loading collections...</p>}
+          {collectionsLoading && <p>Loading collections...</p>}
 
-      {error && (
-        <div>
-          <p style={{ color: "red" }}>Error loading collections:</p>
-          <pre>{error}</pre>
-        </div>
-      )}
+          {error && (
+            <div>
+              <p style={{ color: "red" }}>Error loading collections:</p>
+              <pre>{error}</pre>
+            </div>
+          )}
 
-      {!collectionsLoading && !error && (
-        <div className="space-y-6">
-          {/* My Collections Section */}
-          <div>
-            <h2 className="text-xl font-semibold mb-2">My Collections</h2>
-            {ownedCollections.length === 0 ? (
-              <p className="text-gray-500">
-                You haven't created any collections yet.
-              </p>
-            ) : (
-              <ul className="space-y-1">
-                {ownedCollections.map((collection) => (
-                  <li key={collection.id}>
-                    <Link
-                      // Link uses the owner's (your) username
-                      href={`/${collection.userSlug || user.username}/${
-                        collection.slug
-                      }`}
-                      className="text-blue-500 hover:text-blue-700"
-                    >
-                      {collection.name}
-                    </Link>
-                    {/* Show shared status */}
-                    {collection.sharedWith &&
-                      collection.sharedWith.length > 0 && (
-                        <span className="text-xs text-gray-400 ml-2">
-                          (Shared with:{" "}
-                          {collection.sharedWith
-                            .map((u) => u.username)
-                            .join(", ")}
-                          )
+          {!collectionsLoading && !error && (
+            <div className="space-y-6">
+              {/* My Collections Section */}
+              <div>
+                <h2 className="mb-2 text-xl font-semibold">My Collections</h2>
+                {ownedCollections.length === 0 ? (
+                  <p className="text-gray-500">
+                    You haven't created any collections yet.
+                  </p>
+                ) : (
+                  <ul className="space-y-1">
+                    {ownedCollections.map((collection) => (
+                      <li key={collection.id}>
+                        <Link
+                          // Link uses the owner's (your) username
+                          href={`/${collection.userSlug || user.username}/${
+                            collection.slug
+                          }`}
+                          className="text-blue-500 hover:text-blue-700"
+                        >
+                          {collection.name}
+                        </Link>
+                        {/* Show shared status */}
+                        {collection.sharedWith &&
+                          collection.sharedWith.length > 0 && (
+                            <span className="ml-2 text-xs text-gray-400">
+                              (Shared with:{" "}
+                              {collection.sharedWith
+                                .map((u) => u.username)
+                                .join(", ")}
+                              )
+                            </span>
+                          )}
+                        {!collection.isPublic &&
+                          (!collection.sharedWith ||
+                            collection.sharedWith.length === 0) && (
+                            <span className="ml-2 text-xs text-gray-400">
+                              (Private)
+                            </span>
+                          )}
+                        {collection.description && (
+                          <p className="pl-2 text-sm text-gray-600">
+                            {collection.description}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {/* TODO: Add button to create new collection */}
+              </div>
+
+              {/* Shared With Me Section */}
+              <div>
+                <h2 className="mb-2 text-xl font-semibold">Shared With Me</h2>
+                {sharedCollections.length === 0 ? (
+                  <p className="text-gray-500">
+                    No collections have been shared with you yet.
+                  </p>
+                ) : (
+                  <ul className="space-y-1">
+                    {sharedCollections.map((collection) => (
+                      <li key={collection.id}>
+                        <Link
+                          // Link uses the owner's username
+                          href={`/${collection.ownerUsername}/${collection.slug}`}
+                          className="text-blue-500 hover:text-blue-700"
+                        >
+                          {collection.name}
+                        </Link>
+                        {/* Show owner */}
+                        <span className="ml-2 text-xs text-gray-400">
+                          (Shared by: {collection.ownerUsername})
                         </span>
-                      )}
-                    {!collection.isPublic &&
-                      (!collection.sharedWith ||
-                        collection.sharedWith.length === 0) && (
-                        <span className="text-xs text-gray-400 ml-2">
-                          (Private)
-                        </span>
-                      )}
-                    {collection.description && (
-                      <p className="text-sm text-gray-600 pl-2">
-                        {collection.description}
-                      </p>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {/* TODO: Add button to create new collection */}
-          </div>
-
-          {/* Shared With Me Section */}
-          <div>
-            <h2 className="text-xl font-semibold mb-2">Shared With Me</h2>
-            {sharedCollections.length === 0 ? (
-              <p className="text-gray-500">
-                No collections have been shared with you yet.
-              </p>
-            ) : (
-              <ul className="space-y-1">
-                {sharedCollections.map((collection) => (
-                  <li key={collection.id}>
-                    <Link
-                      // Link uses the owner's username
-                      href={`/${collection.ownerUsername}/${collection.slug}`}
-                      className="text-blue-500 hover:text-blue-700"
-                    >
-                      {collection.name}
-                    </Link>
-                    {/* Show owner */}
-                    <span className="text-xs text-gray-400 ml-2">
-                      (Shared by: {collection.ownerUsername})
-                    </span>
-                    {collection.description && (
-                      <p className="text-sm text-gray-600 pl-2">
-                        {collection.description}
-                      </p>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+                        {collection.description && (
+                          <p className="pl-2 text-sm text-gray-600">
+                            {collection.description}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

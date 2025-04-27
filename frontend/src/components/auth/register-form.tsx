@@ -73,13 +73,13 @@ export function RegisterForm({
       setError(
         err instanceof Error
           ? err.message
-          : "An error occurred during registration"
+          : "An error occurred during registration",
       );
     }
   };
 
   return (
-    <div className="w-full max-w-md mx-auto">
+    <div className="mx-auto w-full max-w-md">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {error && (
           <Alert variant="destructive">
@@ -94,6 +94,7 @@ export function RegisterForm({
             type="email"
             {...register("email")}
             disabled={!!googleEmail}
+            className="bg-white"
           />
           {errors.email && (
             <p className="text-sm text-red-500">{errors.email.message}</p>
@@ -102,7 +103,7 @@ export function RegisterForm({
 
         <div className="space-y-2">
           <Label htmlFor="username">Username</Label>
-          <Input id="username" {...register("username")} />
+          <Input id="username" {...register("username")} className="bg-white" />
           {errors.username && (
             <p className="text-sm text-red-500">{errors.username.message}</p>
           )}
@@ -110,7 +111,12 @@ export function RegisterForm({
 
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>
-          <Input id="password" type="password" {...register("password")} />
+          <Input
+            id="password"
+            type="password"
+            {...register("password")}
+            className="bg-white"
+          />
           {errors.password && (
             <p className="text-sm text-red-500">{errors.password.message}</p>
           )}
@@ -122,6 +128,7 @@ export function RegisterForm({
             id="confirmPassword"
             type="password"
             {...register("confirmPassword")}
+            className="bg-white"
           />
           {errors.confirmPassword && (
             <p className="text-sm text-red-500">
@@ -142,10 +149,13 @@ export function RegisterForm({
         </Button>
 
         {!googleEmail && (
-          <div className="text-center mt-4">
-            <p className="text-sm text-gray-500">
+          <div className="mt-4 text-center">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Already have an account?{" "}
-              <a href="/login" className="text-blue-500 hover:text-blue-700">
+              <a
+                href="/login"
+                className="text-blue-500 hover:text-blue-700 dark:text-blue-400"
+              >
                 Log in
               </a>
             </p>

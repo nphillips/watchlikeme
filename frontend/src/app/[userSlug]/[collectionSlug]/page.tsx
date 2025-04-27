@@ -85,7 +85,7 @@ export default function CollectionPage() {
     },
     {
       revalidateOnFocus: false,
-    }
+    },
   );
 
   // Extract collection and items from data when available
@@ -142,15 +142,15 @@ export default function CollectionPage() {
   // Memoized values derived from SWR data
   const likeCount = useMemo(
     () => collection?.likeCount ?? 0,
-    [collection?.likeCount]
+    [collection?.likeCount],
   );
   const currentUserHasLiked = useMemo(
     () => collection?.currentUserHasLiked ?? false,
-    [collection?.currentUserHasLiked]
+    [collection?.currentUserHasLiked],
   );
   const isOwner = useMemo(
     () => loggedInUser?.id === collection?.userId,
-    [loggedInUser?.id, collection?.userId]
+    [loggedInUser?.id, collection?.userId],
   );
 
   // --- State for Sharing ---
@@ -164,7 +164,7 @@ export default function CollectionPage() {
   const ownerUsername = collection?.ownerUsername;
   const sharedWithList = useMemo(
     () => collection?.sharedWith ?? [],
-    [collection?.sharedWith]
+    [collection?.sharedWith],
   );
 
   // Function to handle adding an item
@@ -230,7 +230,7 @@ export default function CollectionPage() {
     } catch (err) {
       console.error(`Error removing item ${collectionItemId}:`, err);
       setRemoveError(
-        err instanceof Error ? err.message : "Failed to remove item"
+        err instanceof Error ? err.message : "Failed to remove item",
       );
       setTimeout(() => setRemoveError(null), 5000);
     } finally {
@@ -266,7 +266,7 @@ export default function CollectionPage() {
     } catch (err) {
       console.error("Error updating collection details:", err);
       setSaveError(
-        err instanceof Error ? err.message : "Failed to save changes"
+        err instanceof Error ? err.message : "Failed to save changes",
       );
     } finally {
       setIsSaving(false);
@@ -324,7 +324,7 @@ export default function CollectionPage() {
     } catch (err) {
       console.error("Error liking/unliking collection:", err);
       setLikeError(
-        err instanceof Error ? err.message : "Failed to update like status"
+        err instanceof Error ? err.message : "Failed to update like status",
       );
       // Revert optimistic update on error
       mutateItems(data, false); // Revert to original data without revalidating yet
@@ -354,7 +354,7 @@ export default function CollectionPage() {
     try {
       await grantCollectionAccess(collectionSlug, targetUsername.trim());
       console.log(
-        `Access granted to ${targetUsername}, revalidating collection data...`
+        `Access granted to ${targetUsername}, revalidating collection data...`,
       );
       setGrantAccessSuccess(true);
       setTargetUsername("");
@@ -369,7 +369,7 @@ export default function CollectionPage() {
     } catch (err) {
       console.error("Error granting access:", err);
       setGrantAccessError(
-        err instanceof Error ? err.message : "Failed to grant access"
+        err instanceof Error ? err.message : "Failed to grant access",
       );
       setGrantAccessSuccess(false);
     } finally {
@@ -380,8 +380,8 @@ export default function CollectionPage() {
   if (authLoading || (itemsLoading && !data)) {
     // Show loading if auth or initial data fetch is happening
     return (
-      <div className="min-h-screen p-4 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
   }
@@ -393,7 +393,7 @@ export default function CollectionPage() {
     return (
       <div className="min-h-screen p-4">
         <Nav />
-        <div className="text-center text-red-500 mt-10">
+        <div className="mt-10 text-center text-red-500">
           {isForbidden ? (
             <p>
               Access Denied: You do not have permission to view this private
@@ -414,343 +414,356 @@ export default function CollectionPage() {
   // Note: A 404 from the API will also be caught by itemsError above
   if (!collection) {
     return (
-      <div className="min-h-screen p-4">
+      <div className="flex min-h-screen flex-col">
         <Nav />
-        <div className="text-center text-gray-500 mt-10">
-          <p>Collection not found.</p>
+        <div className="flex flex-1 flex-col items-center py-10">
+          <div className="container w-full px-4 md:px-6">
+            <p>Collection not found.</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen p-4">
-      <Nav />
-      <div className="mb-4 flex justify-between items-start flex-wrap gap-2">
-        <div>
-          <h1 className="text-2xl font-bold">{collection.name}</h1>
-          {/* Show owner/shared status */}
-          {!isOwner && ownerUsername && (
-            <span className="text-sm text-gray-500">
-              Shared by {ownerUsername}
-            </span>
-          )}
-          {isOwner && sharedWithList.length > 0 && (
-            <span className="text-sm text-gray-500">
-              Shared with: {sharedWithList.map((u) => u.username).join(", ")}
-            </span>
-          )}
-          {isOwner && sharedWithList.length === 0 && (
-            <span className="text-sm text-gray-500">Private (Not shared)</span>
-          )}
-        </div>
-        {/* Like Button Area */}
-        <div className="flex items-center space-x-2 mt-1">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleLikeToggle}
-            disabled={isLiking || isOwner} // Disable if owner OR liking
-            title={
-              isOwner
-                ? "You cannot like your own collection"
-                : currentUserHasLiked
-                ? "Unlike"
-                : "Like"
-            }
-          >
-            {isLiking ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-gray-500 mr-2"></div>
-            ) : (
-              <Heart
-                className={`mr-2 h-4 w-4 ${
-                  currentUserHasLiked ? "fill-red-500 text-red-500" : ""
-                }`}
-              />
-            )}
-            {currentUserHasLiked ? "Liked" : "Like"}
-          </Button>
-          <span className="text-sm text-gray-600">
-            {likeCount} {likeCount === 1 ? "like" : "likes"}
-          </span>
-        </div>
-      </div>
-
-      {likeError && (
-        <p className="text-sm text-red-500 mb-2 -mt-2 text-right">
-          Error: {likeError}
-        </p>
-      )}
-
-      {/* Edit/Share Buttons Row */}
-      <div className="mb-4 flex space-x-2">
-        {/* Edit Button (only for owner) */}
-        {isOwner && (
-          <Button variant="outline" size="sm" onClick={handleOpenEditDialog}>
-            Edit Details
-          </Button>
-        )}
-        {/* Share Button (only for owner) */}
-        {isOwner && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setGrantAccessError(null);
-              setGrantAccessSuccess(false);
-              setTargetUsername("");
-              setIsSharing(true);
-            }}
-          >
-            <Share2 className="mr-2 h-4 w-4" />
-            Share
-          </Button>
-        )}
-      </div>
-
-      {(collection.note || collection.description) && (
-        <div className="mb-4 text-gray-700 p-3 bg-gray-50 dark:bg-gray-900 dark:text-white rounded border border-gray-200 dark:border-gray-700">
-          <h3 className="font-semibold mb-1">Notes:</h3>
-          <p className=" whitespace-pre-wrap">
-            {collection.note || collection.description}
-          </p>
-        </div>
-      )}
-
-      {isOwner && (
-        <div className="my-4">
-          <CommandPalette
-            onAddItem={handleAddItem}
-            existingItemYoutubeIds={existingItemYoutubeIds}
-          />
-          {isAdding && (
-            <p className="text-sm text-blue-500 mt-2">Adding item...</p>
-          )}
-          {addError && (
-            <p className="text-sm text-red-500 mt-2">
-              Error adding: {addError}
-            </p>
-          )}
-          {removeError && (
-            <p className="text-sm text-red-500 mt-2">
-              Error removing: {removeError}
-            </p>
-          )}
-        </div>
-      )}
-
-      <h2 className="text-lg font-bold my-4">Items in Collection</h2>
-
-      {itemsLoading && items.length === 0 && (
-        <div className="flex justify-center items-center">
-          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      )}
-
-      {!itemsLoading && items.length === 0 && (
-        <div className="text-center text-gray-500">
-          No items in this collection yet.
-        </div>
-      )}
-
-      {items.length > 0 && (
-        <ul className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] [grid-template-rows:repeat(2,min-content)] gap-2">
-          {items.map((item) => {
-            const displayItem = item.channel || item.video;
-            const channelInfo = item.channel || item.video?.channel;
-            const isVideo = !!item.video;
-            const isCurrentlyRemoving = removingItemId === item.id;
-
-            if (!displayItem || !channelInfo) {
-              console.warn(
-                "Skipping rendering item without display data:",
-                item
-              );
-              return null;
-            }
-            return (
-              <li
-                key={item.id}
-                className={`flex flex-col gap-3 p-2 border rounded-md justify-center items-center ${
-                  isCurrentlyRemoving ? "opacity-50" : ""
-                }`}
+    <div className="flex min-h-screen flex-col">
+      <div className="flex flex-1 flex-col items-center py-10">
+        <div className="container w-full px-4 md:px-6">
+          <Nav />
+          <div className="flex flex-1 flex-col items-center py-10">
+            <div>
+              <h1 className="text-2xl font-bold">{collection.name}</h1>
+              {/* Show owner/shared status */}
+              {!isOwner && ownerUsername && (
+                <span className="text-sm text-gray-500">
+                  Shared by {ownerUsername}
+                </span>
+              )}
+              {isOwner && sharedWithList.length > 0 && (
+                <span className="text-sm text-gray-500">
+                  Shared with:{" "}
+                  {sharedWithList.map((u) => u.username).join(", ")}
+                </span>
+              )}
+              {isOwner && sharedWithList.length === 0 && (
+                <span className="text-sm text-gray-500">
+                  Private (Not shared)
+                </span>
+              )}
+            </div>
+            {/* Like Button Area */}
+            <div className="mt-1 flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLikeToggle}
+                disabled={isLiking || isOwner} // Disable if owner OR liking
+                title={
+                  isOwner
+                    ? "You cannot like your own collection"
+                    : currentUserHasLiked
+                      ? "Unlike"
+                      : "Like"
+                }
               >
-                {displayItem.thumbnail ? (
-                  <YouTubeThumbnail
-                    url={displayItem.thumbnail}
-                    alt={displayItem.title}
-                    size="2xl"
-                  />
+                {isLiking ? (
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-t-2 border-b-2 border-gray-500"></div>
                 ) : (
-                  <div className="h-24 w-24 bg-gray-200 rounded flex items-center justify-center text-gray-400 text-xs">
-                    No Img
-                  </div>
+                  <Heart
+                    className={`mr-2 h-4 w-4 ${
+                      currentUserHasLiked ? "fill-red-500 text-red-500" : ""
+                    }`}
+                  />
                 )}
-                <span className="flex-1 flex flex-col">
-                  {item.channel ? (
-                    <a
-                      href={`https://www.youtube.com/channel/${item.channel.youtubeId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium line-clamp-1 hover:underline text-center "
+                {currentUserHasLiked ? "Liked" : "Like"}
+              </Button>
+              <span className="text-sm text-gray-600">
+                {likeCount} {likeCount === 1 ? "like" : "likes"}
+              </span>
+            </div>
+          </div>
+
+          {likeError && (
+            <p className="-mt-2 mb-2 text-right text-sm text-red-500">
+              Error: {likeError}
+            </p>
+          )}
+
+          {/* Edit/Share Buttons Row */}
+          <div className="mb-4 flex space-x-2">
+            {/* Edit Button (only for owner) */}
+            {isOwner && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleOpenEditDialog}
+              >
+                Edit Details
+              </Button>
+            )}
+            {/* Share Button (only for owner) */}
+            {isOwner && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setGrantAccessError(null);
+                  setGrantAccessSuccess(false);
+                  setTargetUsername("");
+                  setIsSharing(true);
+                }}
+              >
+                <Share2 className="mr-2 h-4 w-4" />
+                Share
+              </Button>
+            )}
+          </div>
+
+          {(collection.note || collection.description) && (
+            <div className="mb-4 rounded border border-gray-200 bg-gray-50 p-3 text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-white">
+              <h3 className="mb-1 font-semibold">Notes:</h3>
+              <p className="whitespace-pre-wrap">
+                {collection.note || collection.description}
+              </p>
+            </div>
+          )}
+
+          {isOwner && (
+            <div className="my-4">
+              <CommandPalette
+                onAddItem={handleAddItem}
+                existingItemYoutubeIds={existingItemYoutubeIds}
+              />
+              {isAdding && (
+                <p className="mt-2 text-sm text-blue-500">Adding item...</p>
+              )}
+              {addError && (
+                <p className="mt-2 text-sm text-red-500">
+                  Error adding: {addError}
+                </p>
+              )}
+              {removeError && (
+                <p className="mt-2 text-sm text-red-500">
+                  Error removing: {removeError}
+                </p>
+              )}
+            </div>
+          )}
+
+          <h2 className="my-4 text-lg font-bold">Items in Collection</h2>
+
+          {itemsLoading && items.length === 0 && (
+            <div className="flex items-center justify-center">
+              <div className="h-6 w-6 animate-spin rounded-full border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          )}
+
+          {!itemsLoading && items.length === 0 && (
+            <div className="text-center text-gray-500">
+              No items in this collection yet.
+            </div>
+          )}
+
+          {items.length > 0 && (
+            <ul className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] [grid-template-rows:repeat(2,min-content)] gap-2">
+              {items.map((item) => {
+                const displayItem = item.channel || item.video;
+                const channelInfo = item.channel || item.video?.channel;
+                const isVideo = !!item.video;
+                const isCurrentlyRemoving = removingItemId === item.id;
+
+                if (!displayItem || !channelInfo) {
+                  console.warn(
+                    "Skipping rendering item without display data:",
+                    item,
+                  );
+                  return null;
+                }
+                return (
+                  <li
+                    key={item.id}
+                    className={`flex flex-col items-center justify-center gap-3 rounded-md border p-2 ${
+                      isCurrentlyRemoving ? "opacity-50" : ""
+                    }`}
+                  >
+                    {displayItem.thumbnail ? (
+                      <YouTubeThumbnail
+                        url={displayItem.thumbnail}
+                        alt={displayItem.title}
+                        size="2xl"
+                      />
+                    ) : (
+                      <div className="flex h-24 w-24 items-center justify-center rounded bg-gray-200 text-xs text-gray-400">
+                        No Img
+                      </div>
+                    )}
+                    <span className="flex flex-1 flex-col">
+                      {item.channel ? (
+                        <a
+                          href={`https://www.youtube.com/channel/${item.channel.youtubeId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="line-clamp-1 text-center font-medium hover:underline"
+                        >
+                          {displayItem.title}
+                        </a>
+                      ) : (
+                        <span className="line-clamp-1 font-medium">
+                          {displayItem.title}
+                        </span>
+                      )}
+                      {isVideo && channelInfo && (
+                        <span className="line-clamp-1 text-sm text-gray-500">
+                          Channel:{" "}
+                          <a
+                            href={`https://www.youtube.com/channel/${channelInfo.youtubeId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:underline"
+                          >
+                            {channelInfo.title}
+                          </a>
+                        </span>
+                      )}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveItem(item.id)}
+                      disabled={isCurrentlyRemoving}
+                      aria-label="Remove item"
                     >
-                      {displayItem.title}
-                    </a>
-                  ) : (
-                    <span className="font-medium line-clamp-1">
-                      {displayItem.title}
-                    </span>
-                  )}
-                  {isVideo && channelInfo && (
-                    <span className="text-sm text-gray-500 line-clamp-1">
-                      Channel:{" "}
-                      <a
-                        href={`https://www.youtube.com/channel/${channelInfo.youtubeId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hover:underline"
-                      >
-                        {channelInfo.title}
-                      </a>
-                    </span>
-                  )}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemoveItem(item.id)}
-                  disabled={isCurrentlyRemoving}
-                  aria-label="Remove item"
-                >
-                  {isCurrentlyRemoving ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-gray-500"></div>
-                  ) : (
-                    <X className="h-4 w-4" />
-                  )}
-                </Button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                      {isCurrentlyRemoving ? (
+                        <div className="h-4 w-4 animate-spin rounded-full border-t-2 border-b-2 border-gray-500"></div>
+                      ) : (
+                        <X className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
 
-      <Dialog open={isEditing} onOpenChange={setIsEditing}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Edit Collection Details</DialogTitle>
-            <DialogDescription>
-              Update the notes and visibility for this collection.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="note-textarea" className="text-right">
-                Note
-              </Label>
-              <Textarea
-                id="note-textarea"
-                value={editableNote}
-                onChange={(e) => setEditableNote(e.target.value)}
-                placeholder="Add your notes here... Supports basic markdown maybe later?"
-                className="col-span-3 h-32"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="public-switch" className="text-right">
-                Public
-              </Label>
-              <div className="col-span-3 flex items-center space-x-2">
-                <Switch
-                  id="public-switch"
-                  checked={editableIsPublic}
-                  onCheckedChange={setEditableIsPublic}
-                  disabled={collectionSlug === "profile"}
-                />
-                <span className="text-sm text-muted-foreground">
-                  {editableIsPublic
-                    ? "Visible to everyone."
-                    : "Only visible to you."}
-                </span>
+          <Dialog open={isEditing} onOpenChange={setIsEditing}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Edit Collection Details</DialogTitle>
+                <DialogDescription>
+                  Update the notes and visibility for this collection.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="note-textarea" className="text-right">
+                    Note
+                  </Label>
+                  <Textarea
+                    id="note-textarea"
+                    value={editableNote}
+                    onChange={(e) => setEditableNote(e.target.value)}
+                    placeholder="Add your notes here... Supports basic markdown maybe later?"
+                    className="col-span-3 h-32"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="public-switch" className="text-right">
+                    Public
+                  </Label>
+                  <div className="col-span-3 flex items-center space-x-2">
+                    <Switch
+                      id="public-switch"
+                      checked={editableIsPublic}
+                      onCheckedChange={setEditableIsPublic}
+                      disabled={collectionSlug === "profile"}
+                    />
+                    <span className="text-muted-foreground text-sm">
+                      {editableIsPublic
+                        ? "Visible to everyone."
+                        : "Only visible to you."}
+                    </span>
+                  </div>
+                </div>
+                {saveError && (
+                  <p className="col-span-4 text-center text-sm text-red-500">
+                    Error: {saveError}
+                  </p>
+                )}
               </div>
-            </div>
-            {saveError && (
-              <p className="text-sm text-red-500 col-span-4 text-center">
-                Error: {saveError}
-              </p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsEditing(false)}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleSaveChanges}
-              disabled={isSaving}
-            >
-              {isSaving ? "Saving..." : "Save Changes"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditing(false)}
+                  disabled={isSaving}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleSaveChanges}
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving..." : "Save Changes"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
-      {/* --- Share Dialog --- */}
-      <Dialog open={isSharing} onOpenChange={setIsSharing}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Share Collection</DialogTitle>
-            <DialogDescription>
-              Grant access to another WatchLikeMe user by entering their
-              username. They must be logged in to view.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="share-username" className="text-right">
-                Username
-              </Label>
-              <Input
-                id="share-username"
-                value={targetUsername}
-                onChange={(e) => setTargetUsername(e.target.value)}
-                placeholder="Enter username..."
-                className="col-span-3"
-                disabled={isGrantingAccess}
-              />
-            </div>
-            {grantAccessSuccess && (
-              <p className="text-sm text-green-600 col-span-4 text-center">
-                Access granted successfully!
-              </p>
-            )}
-            {grantAccessError && (
-              <p className="text-sm text-red-500 col-span-4 text-center">
-                Error: {grantAccessError}
-              </p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsSharing(false)}
-              disabled={isGrantingAccess}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleGrantAccess}
-              disabled={isGrantingAccess || !targetUsername.trim()}
-            >
-              {isGrantingAccess ? "Granting..." : "Grant Access"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          {/* --- Share Dialog --- */}
+          <Dialog open={isSharing} onOpenChange={setIsSharing}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Share Collection</DialogTitle>
+                <DialogDescription>
+                  Grant access to another WatchLikeMe user by entering their
+                  username. They must be logged in to view.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="share-username" className="text-right">
+                    Username
+                  </Label>
+                  <Input
+                    id="share-username"
+                    value={targetUsername}
+                    onChange={(e) => setTargetUsername(e.target.value)}
+                    placeholder="Enter username..."
+                    className="col-span-3"
+                    disabled={isGrantingAccess}
+                  />
+                </div>
+                {grantAccessSuccess && (
+                  <p className="col-span-4 text-center text-sm text-green-600">
+                    Access granted successfully!
+                  </p>
+                )}
+                {grantAccessError && (
+                  <p className="col-span-4 text-center text-sm text-red-500">
+                    Error: {grantAccessError}
+                  </p>
+                )}
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsSharing(false)}
+                  disabled={isGrantingAccess}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleGrantAccess}
+                  disabled={isGrantingAccess || !targetUsername.trim()}
+                >
+                  {isGrantingAccess ? "Granting..." : "Grant Access"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
     </div>
   );
 }

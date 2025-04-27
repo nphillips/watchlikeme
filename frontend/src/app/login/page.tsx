@@ -1,13 +1,16 @@
+"use client";
 import { LoginForm } from "@/components/auth/login-form";
+import Nav from "@/components/Nav";
 
 export default function LoginPage() {
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-md mx-auto">
-        <h1 className="text-2xl font-bold mb-6 text-center">
-          Log in to WatchLikeMe
-        </h1>
-        <LoginForm />
+    <div className="flex min-h-screen flex-col">
+      <Nav />
+      <div className="flex flex-1 flex-col items-center py-10">
+        <div className="container w-full px-6">
+          <h1 className="mb-6 text-center text-2xl font-bold">Log in</h1>
+          <LoginForm />
+        </div>
       </div>
     </div>
   );

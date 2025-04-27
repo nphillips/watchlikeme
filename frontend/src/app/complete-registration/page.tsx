@@ -42,7 +42,7 @@ export default function CompleteRegistrationPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8 flex justify-center items-center min-h-[60vh]">
+      <div className="px-4 py-8 flex justify-center items-center min-h-[60vh]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading your profile...</p>
@@ -53,7 +53,7 @@ export default function CompleteRegistrationPage() {
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className=" px-4 py-8">
         <div className="max-w-md mx-auto bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
           <p>{error}</p>
           <div className="mt-4">
@@ -70,7 +70,7 @@ export default function CompleteRegistrationPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className=" px-4 py-8">
       <div className="max-w-md mx-auto">
         <h1 className="text-2xl font-bold mb-2 text-center">
           Complete Your Registration

@@ -67,7 +67,7 @@ export function LoginForm() {
           setGoogleAuthRequired(true);
           setEmailForGoogle(data.email);
           setError(
-            "This account uses Google authentication. Please sign in with Google."
+            "This account uses Google authentication. Please sign in with Google.",
           );
           return;
         }
@@ -79,29 +79,34 @@ export function LoginForm() {
       router.push("/");
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "An error occurred during login"
+        err instanceof Error ? err.message : "An error occurred during login",
       );
     }
   };
 
   return (
-    <div className="w-full max-w-md mx-auto">
+    <div className="mx-auto w-full max-w-md">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          <div className="rounded border border-red-400 bg-red-100 px-4 py-3 text-red-700">
             {error}
           </div>
         )}
 
         {successMessage && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+          <div className="rounded border border-green-400 bg-green-100 px-4 py-3 text-green-700">
             {successMessage}
           </div>
         )}
 
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" {...register("email")} />
+          <Input
+            id="email"
+            type="email"
+            {...register("email")}
+            className="bg-white"
+          />
           {errors.email && (
             <p className="text-sm text-red-500">{errors.email.message}</p>
           )}
@@ -109,7 +114,12 @@ export function LoginForm() {
 
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>
-          <Input id="password" type="password" {...register("password")} />
+          <Input
+            id="password"
+            type="password"
+            {...register("password")}
+            className="bg-white"
+          />
           {errors.password && (
             <p className="text-sm text-red-500">{errors.password.message}</p>
           )}
@@ -131,7 +141,7 @@ export function LoginForm() {
             <Button
               type="button"
               variant="outline"
-              className="w-full flex items-center justify-center gap-2"
+              className="flex w-full items-center justify-center gap-2"
               onClick={() => (window.location.href = "/api/auth/google")}
             >
               <svg
@@ -162,10 +172,13 @@ export function LoginForm() {
           </div>
         )}
 
-        <div className="text-center mt-4">
-          <p className="text-sm text-gray-500">
+        <div className="mt-4 text-center">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             Don't have an account?{" "}
-            <a href="/register" className="text-blue-500 hover:text-blue-700">
+            <a
+              href="/register"
+              className="text-blue-500 hover:text-blue-700 dark:text-blue-400"
+            >
               Register
             </a>
           </p>
@@ -173,10 +186,12 @@ export function LoginForm() {
 
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300"></div>
+            <div className="w-full border-t border-gray-300 dark:border-gray-700"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Or</span>
+            <span className="bg-background px-2 text-gray-500 dark:text-gray-400">
+              Or
+            </span>
           </div>
         </div>
 

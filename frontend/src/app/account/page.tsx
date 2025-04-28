@@ -24,7 +24,7 @@ export default function AccountPage() {
     } catch (err) {
       console.error("Error unlinking Google account:", err);
       setUnlinkError(
-        err instanceof Error ? err.message : "Failed to unlink account"
+        err instanceof Error ? err.message : "Failed to unlink account",
       );
     } finally {
       setIsUnlinking(false);
@@ -33,24 +33,29 @@ export default function AccountPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen p-4 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen p-4">
-      <Nav />
-      <div className="max-w-xl mx-auto mt-8">
-        <h1 className="text-2xl font-bold mb-6">Account Settings</h1>
+      <Nav
+        isAuthenticated={true}
+        user={user}
+        handleLinkGoogle={handleLinkGoogle}
+        onMenuClick={() => {}}
+      />
+      <div className="mx-auto mt-8 max-w-xl">
+        <h1 className="mb-6 text-2xl font-bold">Account Settings</h1>
 
         {!user ? (
           <div className="text-center">
             <p>Please log in to view your account settings.</p>
             <Link
               href="/login"
-              className="mt-4 inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+              className="mt-4 inline-block rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
             >
               Log In
             </Link>
@@ -58,17 +63,17 @@ export default function AccountPage() {
         ) : (
           <div className="space-y-6">
             <div>
-              <h2 className="text-lg font-semibold mb-2">User Information</h2>
+              <h2 className="mb-2 text-lg font-semibold">User Information</h2>
               <p>Email: {user.email}</p>
               <p>Username: {user.username}</p>
               {/* Add other user details as needed */}
             </div>
 
             <div>
-              <h2 className="text-lg font-semibold mb-2">Google Account</h2>
+              <h2 className="mb-2 text-lg font-semibold">Google Account</h2>
               {user.hasGoogleAuth ? (
                 <div>
-                  <p className="text-green-600 mb-2">Google Account Linked</p>
+                  <p className="mb-2 text-green-600">Google Account Linked</p>
                   <Button
                     variant="destructive"
                     onClick={handleUnlink}
@@ -77,14 +82,14 @@ export default function AccountPage() {
                     {isUnlinking ? "Unlinking..." : "Unlink Google Account"}
                   </Button>
                   {unlinkError && (
-                    <p className="text-sm text-red-500 mt-2">
+                    <p className="mt-2 text-sm text-red-500">
                       Error: {unlinkError}
                     </p>
                   )}
                 </div>
               ) : (
                 <div>
-                  <p className="text-gray-600 mb-2">No Google Account Linked</p>
+                  <p className="mb-2 text-gray-600">No Google Account Linked</p>
                   {/* Use the handleLinkGoogle function from useAuth */}
                   <Button onClick={handleLinkGoogle}>
                     Link Google Account

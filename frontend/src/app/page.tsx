@@ -5,6 +5,9 @@ import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 import { useCollections } from "@/context/CollectionsContext";
 import CollectionsList from "@/components/CollectionsList";
+import MarqueeGrid from "@/components/MarqueeGrid";
+import thumbnailRows from "@/components/images";
+import Image from "next/image";
 
 export default function Home() {
   const { user, loading: authLoading, handleLinkGoogle } = useAuth();
@@ -27,8 +30,8 @@ export default function Home() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center py-10">
-      <div className="container w-full px-4 md:px-6">
+    <div className="flex min-h-screen flex-col pb-10">
+      <div>
         {user ? (
           <div>
             <h2 className="text-xl font-semibold">Home Page Content</h2>
@@ -81,7 +84,24 @@ export default function Home() {
           </div>
         ) : (
           <div>
-            <p>Welcome to WatchLikeMe. Please log in or register.</p>
+            <div className="dark relative isolate flex h-screen flex-col items-center justify-center overflow-hidden bg-linear-to-t from-slate-900 to-indigo-500 text-slate-100 md:h-[42rem] md:min-h-[40rem]">
+              {/* <Image
+                src="/images/background-texture.jpeg"
+                alt="Background"
+                fill
+                className="absolute inset-0 z-[-2] h-full w-full object-cover opacity-5"
+              /> */}
+              <div className="absolute top-1/2 left-0 z-[-1] -translate-y-1/2 opacity-25">
+                <MarqueeGrid />
+              </div>
+              <div className="font-display text-clamp-h1 flex max-w-[20em] flex-col items-center justify-center px-4 text-center text-balance md:px-6">
+                Discover, curate, and celebrate your YouTube channels.
+              </div>
+              <div className="text-clamp-h3 mt-[1em] max-w-[20em] text-center font-medium text-balance">
+                YouTube channels are hidden gems—let’s give them the spotlight
+                they deserve.
+              </div>
+            </div>
           </div>
         )}
       </div>

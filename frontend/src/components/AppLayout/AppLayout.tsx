@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import Nav from "@/components/Nav/Nav";
 import LeftNavOverlay from "@/components/LeftNav/LeftNavOverlay";
 import LeftNav from "@/components/LeftNav/LeftNav"; // Desktop version
@@ -8,12 +9,14 @@ import { useAuth } from "@/hooks/useAuth"; // Import useAuth
 import { getCollections } from "@/lib/api/collections"; // Import API function
 import { Collection } from "@/interfaces/index"; // Import Collection type
 import { CollectionsContext } from "@/context/CollectionsContext"; // Import the context
+import { cn } from "@/lib/utils";
 
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
 const AppLayout = ({ children }: AppLayoutProps) => {
+  const pathname = usePathname();
   // Sheet state
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
@@ -87,11 +90,17 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   return (
     <CollectionsContext.Provider value={collectionsContextValue}>
       {/* Pass auth state down to Nav */}
+      <div
+        className={cn(
+          "nav-bg fixed top-0 right-0 left-0 z-1 min-h-[var(--height-nav)] bg-blue-950/90 dark:border-b dark:border-slate-600 dark:bg-slate-800/90",
+        )}
+      ></div>
       <Nav
         onMenuClick={handleMenuClick}
         isAuthenticated={isAuthenticated}
         user={user}
         handleLinkGoogle={handleLinkGoogle}
+        topNudge={pathname === "/" && !isAuthenticated ? false : true}
       />
 
       {/* Render LeftNavOverlay (Mobile Sheet), passing collections data */}

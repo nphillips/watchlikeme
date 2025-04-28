@@ -1,22 +1,43 @@
 import { Button } from "../ui/button";
 import { useRouter } from "next/navigation";
 import { removeCookie } from "@/lib/cookies";
-import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 import { ModeToggle } from "../mode-toggle";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 import Logo from "../Logo";
+import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button";
 
 // Define props for Nav
 interface NavProps {
   onMenuClick: () => void;
+  isAuthenticated: boolean;
+  user: {
+    id: string;
+    email: string;
+    username: string;
+    hasGoogleAuth: boolean;
+  } | null;
+  handleLinkGoogle: () => void;
 }
 
-const Nav = ({ onMenuClick }: NavProps) => {
-  const { isAuthenticated, user, loading, handleLinkGoogle } = useAuth();
+const Nav = ({
+  onMenuClick,
+  isAuthenticated,
+  user,
+  handleLinkGoogle,
+}: NavProps) => {
   const router = useRouter();
   const pathname = usePathname();
+
+  // Add console logs here
+  console.log("[Nav] Rendering - Pathname:", pathname);
+  console.log("[Nav] Rendering - Received isAuthenticated:", isAuthenticated);
+  console.log(
+    "[Nav] Rendering - Should show Login button?",
+    !isAuthenticated && pathname !== "/login",
+  );
 
   const handleSignOut = async () => {
     try {
@@ -43,16 +64,9 @@ const Nav = ({ onMenuClick }: NavProps) => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
   return (
     <>
+      <div className="h-[var(--height-nav)]"></div>
       <div className="dark fixed top-0 right-0 left-0 z-50 flex h-[var(--height-nav)] flex-[0_0_auto] items-center justify-between border-b border-gray-700 bg-slate-800 text-slate-50 dark:bg-slate-900">
         <div className="flex w-full items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-4">
@@ -60,22 +74,19 @@ const Nav = ({ onMenuClick }: NavProps) => {
               variant="outline"
               size="icon"
               className="md:hidden"
-              onClick={() => {
-                console.log("Nav: Menu button clicked, calling onMenuClick");
-                onMenuClick();
-              }}
+              onClick={onMenuClick}
             >
               <Menu />
             </Button>
             <Logo />
           </div>
           <div>
-            <div>
+            <div className="flex items-center gap-4">
               {isAuthenticated ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="hidden md:block">
-                      {user ? `${user.email}` : "You are signed in!"}
+                      {user ? `${user.email}` : "Signed in"}
                     </div>
                     <div className="flex gap-2">
                       {user && !user.hasGoogleAuth && (
@@ -122,33 +133,16 @@ const Nav = ({ onMenuClick }: NavProps) => {
                 </div>
               ) : (
                 <div className="flex items-center gap-4">
-                  <Link href="/login" passHref>
-                    <Button
-                      asChild
-                      disabled={pathname === "/login"}
-                      className={
-                        pathname === "/login"
-                          ? "pointer-events-none opacity-50"
-                          : ""
-                      }
+                  {pathname !== "/login" && (
+                    <Link
+                      href="/login"
+                      className={cn(
+                        buttonVariants({ variant: "default", size: "sm" }),
+                      )}
                     >
                       Log in
-                    </Button>
-                  </Link>
-                  <Link href="/register" passHref>
-                    <Button
-                      variant="outline"
-                      asChild
-                      disabled={pathname === "/register"}
-                      className={
-                        pathname === "/register"
-                          ? "pointer-events-none opacity-50"
-                          : ""
-                      }
-                    >
-                      Register
-                    </Button>
-                  </Link>
+                    </Link>
+                  )}
                   <div className="ml-2">
                     <ModeToggle />
                   </div>

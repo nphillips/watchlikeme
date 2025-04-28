@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 // Remove hasCookie import if no longer needed, or keep if used elsewhere
 // import { hasCookie } from "@/lib/cookies";
@@ -15,47 +15,49 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
   const router = useRouter(); // Keep router if needed for redirects like authSuccess
 
-  useEffect(() => {
-    async function checkAuth() {
-      setLoading(true); // Ensure loading is true at the start
-      try {
-        // Directly attempt to fetch user data.
-        // The backend will handle validating the httpOnly 'token' cookie.
-        console.log("[useAuth] Attempting to fetch /api/users/me");
-        const response = await fetch("/api/users/me");
+  // Define the core auth check logic
+  const checkAuth = useCallback(async () => {
+    console.log("[useAuth] Running checkAuth...");
+    setLoading(true);
+    try {
+      console.log("[useAuth] Attempting to fetch /api/users/me");
+      const response = await fetch("/api/users/me");
+      console.log(
+        `[useAuth] /api/users/me response status: ${response.status}`,
+      );
+
+      if (response.ok) {
+        const userData = await response.json();
+        console.log("[useAuth] User data received:", userData);
+        setUser(userData);
+        setIsAuthenticated(true);
+      } else {
+        const errorData = await response
+          .json()
+          .catch(() => ({ message: "Failed to parse error response" }));
         console.log(
-          `[useAuth] /api/users/me response status: ${response.status}`
+          "[useAuth] Not authenticated:",
+          errorData.message || `Status ${response.status}`,
         );
-
-        if (response.ok) {
-          const userData = await response.json();
-          console.log("[useAuth] User data received:", userData);
-          setUser(userData); // Store the user data
-          setIsAuthenticated(true);
-        } else {
-          // 401 or other errors mean not authenticated
-          const errorData = await response
-            .json()
-            .catch(() => ({ message: "Failed to parse error response" }));
-          console.log(
-            "[useAuth] Not authenticated:",
-            errorData.message || `Status ${response.status}`
-          );
-          setUser(null); // Clear user data
-          setIsAuthenticated(false);
-        }
-      } catch (error) {
-        console.error("[useAuth] Error during auth check:", error);
-        setUser(null); // Clear user data on error
+        setUser(null);
         setIsAuthenticated(false);
-      } finally {
-        setLoading(false);
       }
+    } catch (error) {
+      console.error("[useAuth] Error during auth check:", error);
+      setUser(null);
+      setIsAuthenticated(false);
+    } finally {
+      setLoading(false);
     }
+  }, []); // useCallback with empty dependency array
 
+  // Run the check on initial mount
+  useEffect(() => {
     checkAuth();
-    // Dependency array might need adjustment if other state triggers re-check
-  }, []); // Empty array: check only on initial mount
+  }, [checkAuth]); // Depend on the memoized checkAuth function
+
+  // Expose the checkAuth function as revalidateAuth
+  const revalidateAuth = checkAuth;
 
   // handleLinkGoogle might need adjustment depending on backend flow
   const handleLinkGoogle = () => {
@@ -68,5 +70,6 @@ export function useAuth() {
     user,
     loading,
     handleLinkGoogle,
+    revalidateAuth, // Return the function
   };
 }

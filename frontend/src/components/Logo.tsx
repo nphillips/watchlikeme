@@ -5,7 +5,7 @@ const Logo = () => {
     <div>
       <Link
         href="/"
-        className="mb-4 text-2xl font-bold text-slate-300 dark:text-slate-100"
+        className="mb-4 text-xl font-bold text-slate-300 md:text-2xl dark:text-slate-100"
       >
         WatchLikeMe
       </Link>

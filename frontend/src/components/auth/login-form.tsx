@@ -76,7 +76,7 @@ export function LoginForm() {
       }
 
       // Redirect to home page after successful login
-      router.push("/");
+      window.location.assign("/");
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "An error occurred during login",
@@ -105,7 +105,7 @@ export function LoginForm() {
             id="email"
             type="email"
             {...register("email")}
-            className="bg-white"
+            className="border-gray-300 bg-white dark:border-gray-600"
           />
           {errors.email && (
             <p className="text-sm text-red-500">{errors.email.message}</p>
@@ -118,7 +118,7 @@ export function LoginForm() {
             id="password"
             type="password"
             {...register("password")}
-            className="bg-white"
+            className="border-gray-300 bg-white dark:border-gray-600"
           />
           {errors.password && (
             <p className="text-sm text-red-500">{errors.password.message}</p>
@@ -186,7 +186,7 @@ export function LoginForm() {
 
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300 dark:border-gray-700"></div>
+            <div className="w-full border-t border-gray-400/50 dark:border-gray-600"></div>
           </div>
           <div className="relative flex justify-center text-sm">
             <span className="bg-background px-2 text-gray-500 dark:text-gray-400">

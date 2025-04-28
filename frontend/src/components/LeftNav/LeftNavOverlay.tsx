@@ -36,6 +36,7 @@ const LeftNavOverlay = ({
       <SheetContent side="left" className="dark p-0 text-slate-50">
         <SheetHeader>
           <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+          <Logo />
         </SheetHeader>
 
         <div className="px-4">

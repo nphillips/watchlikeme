@@ -18,7 +18,12 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   // Collections state (moved from LeftNav)
-  const { user, loading: authLoading } = useAuth();
+  const {
+    user,
+    loading: authLoading,
+    isAuthenticated,
+    handleLinkGoogle,
+  } = useAuth();
   const [ownedCollections, setOwnedCollections] = useState<Collection[]>([]);
   const [sharedCollections, setSharedCollections] = useState<Collection[]>([]);
   const [collectionsLoading, setCollectionsLoading] = useState(true);
@@ -81,8 +86,13 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
   return (
     <CollectionsContext.Provider value={collectionsContextValue}>
-      {/* Render Nav */}
-      <Nav onMenuClick={handleMenuClick} />
+      {/* Pass auth state down to Nav */}
+      <Nav
+        onMenuClick={handleMenuClick}
+        isAuthenticated={isAuthenticated}
+        user={user}
+        handleLinkGoogle={handleLinkGoogle}
+      />
 
       {/* Render LeftNavOverlay (Mobile Sheet), passing collections data */}
       <LeftNavOverlay
@@ -95,21 +105,23 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         currentUser={user}
       />
 
-      {/* Render Desktop LeftNav conditionally, passing collections data */}
-      <div className="hidden md:flex">
-        <LeftNav
-          ownedCollections={ownedCollections}
-          sharedCollections={sharedCollections}
-          isLoading={isLoading}
-          error={error}
-          currentUser={user}
-        />
-      </div>
+      {/* Render Desktop LeftNav conditionally ONLY IF user is logged in */}
+      {user && (
+        <div className="hidden md:flex">
+          <LeftNav
+            ownedCollections={ownedCollections}
+            sharedCollections={sharedCollections}
+            isLoading={isLoading}
+            error={error}
+            currentUser={user}
+          />
+        </div>
+      )}
 
-      {/* Main content area with appropriate padding */}
+      {/* Main content area - padding conditional on user */}
       <main
         data-container="main"
-        className="pt-[var(--height-nav)] md:pl-[var(--width-left-nav)]"
+        className={`${user ? "md:pl-[var(--width-left-nav)]" : ""}`.trim()}
       >
         {children}
       </main>

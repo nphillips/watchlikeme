@@ -1,8 +1,5 @@
 import { backendFetch } from "../backend-fetch";
 
-/**
- * Unlinks the user's Google account by deleting their stored tokens.
- */
 export async function unlinkGoogleAccount(): Promise<void> {
   const path = `/api/users/me/google-tokens`;
   console.log(`[API Client] Unlinking Google Account via: DELETE ${path}`);
@@ -13,13 +10,11 @@ export async function unlinkGoogleAccount(): Promise<void> {
 
   console.log(`[API Client] DELETE ${path} status: ${response.status}`);
 
-  // Check for 204 No Content success
   if (response.status === 204) {
     console.log(`[API Client] Successfully unlinked Google Account.`);
-    return; // Success
+    return;
   }
 
-  // Handle errors
   let errorBody = `Failed to unlink Google Account: ${response.statusText}`;
   const contentType = response.headers.get("content-type");
   try {
@@ -41,7 +36,3 @@ export async function unlinkGoogleAccount(): Promise<void> {
   }
   throw new Error(`${errorBody} (Status: ${response.status})`);
 }
-
-// We can potentially move the /api/users/me fetch logic from useAuth
-// into a function here later if needed.
-// export async function getMe() { ... }

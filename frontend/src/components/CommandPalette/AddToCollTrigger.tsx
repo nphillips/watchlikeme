@@ -1,7 +1,7 @@
 import { Button } from "../ui/button";
 
-const AddToCollectionTrigger = () => {
+const AddToCollTrigger = () => {
   return <Button>Add to collection</Button>;
 };
 
-export default AddToCollectionTrigger;
+export default AddToCollTrigger;

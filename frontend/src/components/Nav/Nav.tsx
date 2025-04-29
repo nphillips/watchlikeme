@@ -9,7 +9,6 @@ import Logo from "../Logo";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
-// Define props for Nav
 interface NavProps {
   topNudge?: boolean;
   onMenuClick: () => void;
@@ -33,7 +32,6 @@ const Nav = ({
   const router = useRouter();
   const pathname = usePathname();
 
-  // Add console logs here
   console.log("[Nav] Rendering - Pathname:", pathname);
   console.log("[Nav] Rendering - Received isAuthenticated:", isAuthenticated);
   console.log(
@@ -43,7 +41,6 @@ const Nav = ({
 
   const handleSignOut = async () => {
     try {
-      // Clear cookies using the utility
       removeCookie("google_tokens");
       removeCookie("auth_success");
       removeCookie("token");
@@ -52,16 +49,13 @@ const Nav = ({
 
       console.log("Signing out, clearing cookies client-side");
 
-      // Also clear cookies server-side via the logout API
       await fetch("/api/auth/logout");
 
       console.log("Logout API called, reloading page");
 
-      // Force a full page reload
       window.location.href = "/";
     } catch (error) {
       console.error("Error during sign out:", error);
-      // Force reload anyway
       window.location.href = "/";
     }
   };

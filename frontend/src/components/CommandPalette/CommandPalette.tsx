@@ -1,4 +1,3 @@
-// frontend/src/components/CommandPalette.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -49,13 +48,11 @@ export function CommandPalette({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
-  // Fetch subscriptions only when open & blank query
   const { data: subs } = useSWR<Channel[]>(
     () => (open && query === "" ? "/api/channels" : null),
     fetcher,
   );
 
-  // Fetch YouTube search when open & query non‑empty
   const { data: ytResults = [], error: ytError } = useSWR<Array<any>>(
     () =>
       open && query.length > 0
@@ -64,7 +61,6 @@ export function CommandPalette({
     fetcher,
   );
 
-  // Toggle on ⌘K / Ctrl+K, close on Esc
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -183,3 +179,5 @@ export function CommandPalette({
     </Popover>
   );
 }
+
+export default CommandPalette;

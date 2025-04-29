@@ -28,7 +28,6 @@ export function YouTubeSubscriptions() {
   const [user, setUser] = useState<User | null>(null);
   const [needsRelink, setNeedsRelink] = useState(false);
 
-  // First, check if user has Google auth
   useEffect(() => {
     async function checkGoogleAuth() {
       try {
@@ -47,7 +46,6 @@ export function YouTubeSubscriptions() {
     checkGoogleAuth();
   }, []);
 
-  // Only fetch subscriptions if user has Google auth
   useEffect(() => {
     if (!loading && user?.hasGoogleAuth) {
       async function fetchSubscriptions() {
@@ -57,7 +55,6 @@ export function YouTubeSubscriptions() {
           if (!response.ok) {
             const data = (await response.json()) as ErrorResponse;
 
-            // Check for specific error about missing Google tokens
             if (
               response.status === 403 &&
               (data.error === "Google account not linked" ||
@@ -80,7 +77,9 @@ export function YouTubeSubscriptions() {
         } catch (err) {
           console.error("Error fetching subscriptions:", err);
           setError(
-            err instanceof Error ? err.message : "Failed to fetch subscriptions"
+            err instanceof Error
+              ? err.message
+              : "Failed to fetch subscriptions",
           );
         }
       }
@@ -91,30 +90,29 @@ export function YouTubeSubscriptions() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
-  // Show Google auth prompt if user hasn't linked their account
   if (!user?.hasGoogleAuth) {
     return (
-      <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-center">
-        <p className="text-blue-800 mb-2">
+      <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-center">
+        <p className="mb-2 text-blue-800">
           To see your YouTube subscriptions, please link your Google account
         </p>
         <button
           onClick={() =>
             (window.location.href = "/api/auth/google?linkAccount=true")
           }
-          className="mt-2 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          className="mt-2 inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
         >
           <svg
             viewBox="0 0 24 24"
             width="20"
             height="20"
-            className="inline-block mr-2"
+            className="mr-2 inline-block"
           >
             <path
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -139,25 +137,24 @@ export function YouTubeSubscriptions() {
     );
   }
 
-  // Show re-link button if tokens are expired or missing
   if (needsRelink) {
     return (
-      <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 text-center">
-        <p className="text-yellow-800 mb-2">{error}</p>
+      <div className="rounded-md border border-yellow-200 bg-yellow-50 p-4 text-center">
+        <p className="mb-2 text-yellow-800">{error}</p>
         {errorMessage && (
-          <p className="text-sm text-yellow-700 mb-4">{errorMessage}</p>
+          <p className="mb-4 text-sm text-yellow-700">{errorMessage}</p>
         )}
         <button
           onClick={() =>
             (window.location.href = "/api/auth/google?linkAccount=true")
           }
-          className="mt-2 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          className="mt-2 inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
         >
           <svg
             viewBox="0 0 24 24"
             width="20"
             height="20"
-            className="inline-block mr-2"
+            className="mr-2 inline-block"
           >
             <path
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -186,7 +183,7 @@ export function YouTubeSubscriptions() {
     return (
       <div className="text-center text-red-500">
         <p>Error: {error}</p>
-        {errorMessage && <p className="text-sm mt-2">{errorMessage}</p>}
+        {errorMessage && <p className="mt-2 text-sm">{errorMessage}</p>}
       </div>
     );
   }
@@ -197,7 +194,7 @@ export function YouTubeSubscriptions() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
+      <div className="mb-4 flex items-center justify-between">
         <h2 className="text-xl font-semibold">Subscriptions</h2>
         <RefreshSubscriptionsButton />
       </div>

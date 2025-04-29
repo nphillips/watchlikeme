@@ -1,21 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-// Remove hasCookie import if no longer needed, or keep if used elsewhere
-// import { hasCookie } from "@/lib/cookies";
 
 export function useAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<{
-    id: string; // Add id if returned by /api/users/me
+    id: string;
     email: string;
-    username: string; // Add username
-    hasGoogleAuth: boolean; // Add hasGoogleAuth
-    // Add other relevant fields like name, image, role etc.
+    username: string;
+    hasGoogleAuth: boolean;
   } | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter(); // Keep router if needed for redirects like authSuccess
+  const router = useRouter();
 
-  // Define the core auth check logic
   const checkAuth = useCallback(async () => {
     console.log("[useAuth] Running checkAuth...");
     setLoading(true);
@@ -49,19 +45,15 @@ export function useAuth() {
     } finally {
       setLoading(false);
     }
-  }, []); // useCallback with empty dependency array
+  }, []);
 
-  // Run the check on initial mount
   useEffect(() => {
     checkAuth();
-  }, [checkAuth]); // Depend on the memoized checkAuth function
+  }, [checkAuth]);
 
-  // Expose the checkAuth function as revalidateAuth
   const revalidateAuth = checkAuth;
 
-  // handleLinkGoogle might need adjustment depending on backend flow
   const handleLinkGoogle = () => {
-    // Maybe fetch backend endpoint instead of direct redirect?
     window.location.href = "/api/auth/google?linkAccount=true";
   };
 
@@ -70,6 +62,6 @@ export function useAuth() {
     user,
     loading,
     handleLinkGoogle,
-    revalidateAuth, // Return the function
+    revalidateAuth,
   };
 }

@@ -1,5 +1,5 @@
-import { CommandPalette } from "./CommandPalette";
-import { CpItem } from "./CpItem";
-import { AddToCollectionTrigger } from "./AddToCollectionTrigger";
+import CommandPalette from "./CommandPalette";
+import CpItem from "./CpItem";
+import AddToCollTrigger from "./AddToCollTrigger";
 
-export { CommandPalette, CpItem, AddToCollectionTrigger };
+export { CommandPalette, CpItem, AddToCollTrigger };

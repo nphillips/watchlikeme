@@ -1,7 +1,5 @@
 "use client";
-
 import { CommandPalette } from "@/components/CommandPalette";
-import { YouTubeThumbnail } from "@/components/YouTubeThumbnail";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -30,34 +28,27 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogTrigger,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { LeftNav } from "@/components/LeftNav";
+import CollectionItems from "@/components/CollectionItems/CollectionItems";
 
-// SWR fetcher function
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-// Define a type for the item passed from CommandPalette
-// This needs to accommodate both subscription items and search results
 interface PaletteItem {
-  id: string | { videoId?: string; channelId?: string }; // Search results have object ID
-  title?: string; // Subscription items have direct title
-  thumbnailUrl?: string; // Subscription items have direct thumbnail
+  id: string | { videoId?: string; channelId?: string };
+  title?: string;
+  thumbnailUrl?: string;
   snippet?: {
-    // Search results have snippet
     title: string;
     thumbnails: {
       default: { url: string };
     };
-    channelId?: string; // For videos from search
+    channelId?: string;
   };
-  // Add any other fields that might be present
 }
 
 export default function CollectionPage() {
@@ -69,9 +60,8 @@ export default function CollectionPage() {
     ? `/api/collections/${collectionSlug}/items`
     : null;
 
-  // Update SWR hook to expect CollectionWithItems
   const {
-    data, // data will be { collection: Collection, items: PopulatedCollectionItem[] } | undefined
+    data,
     error: itemsError,
     isLoading: itemsLoading,
     mutate: mutateItems,
@@ -81,7 +71,6 @@ export default function CollectionPage() {
       if (!collectionSlug || typeof collectionSlug !== "string") {
         throw new Error("Invalid collection identifier.");
       }
-      // getCollectionItems now returns CollectionWithItems
       return getCollectionItems(collectionSlug);
     },
     {
@@ -89,26 +78,21 @@ export default function CollectionPage() {
     },
   );
 
-  // Extract collection and items from data when available
   const collection: Collection | null = data?.collection ?? null;
   const items: PopulatedCollectionItem[] = data?.items ?? [];
 
   useEffect(() => {
-    // Update log to show structure
     console.log("[CollectionPage] SWR data updated:", data);
   }, [data]);
 
-  // State for Add Item operation feedback
   const [isAdding, setIsAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const [removingItemId, setRemovingItemId] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
-  // Calculate existingItemYoutubeIds based on extracted items
   const existingItemYoutubeIds = useMemo(() => {
     const idSet = new Set<string>();
     items.forEach((item) => {
-      // Use extracted items array
       if (item.channel?.youtubeId) {
         idSet.add(item.channel.youtubeId);
       } else if (item.video?.youtubeId) {
@@ -117,30 +101,26 @@ export default function CollectionPage() {
     });
     console.log("[CollectionPage] Recalculated existingItemYoutubeIds:", idSet);
     return idSet;
-  }, [items]); // Dependency is now the extracted items array
+  }, [items]);
 
-  // --- State for Editing Note ---
   const [isEditing, setIsEditing] = useState(false);
   const [editableNote, setEditableNote] = useState<string>("");
   const [editableIsPublic, setEditableIsPublic] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Update editableNote when collection data loads or changes
   useEffect(() => {
     if (collection?.note) {
       setEditableNote(collection.note);
     } else {
-      setEditableNote(""); // Reset if note is null or collection is null
+      setEditableNote("");
     }
     setEditableIsPublic(collection?.isPublic ?? true);
   }, [collection?.note, collection?.isPublic]);
 
-  // --- State for Liking ---
   const [isLiking, setIsLiking] = useState(false);
   const [likeError, setLikeError] = useState<string | null>(null);
 
-  // Memoized values derived from SWR data
   const likeCount = useMemo(
     () => collection?.likeCount ?? 0,
     [collection?.likeCount],
@@ -154,21 +134,18 @@ export default function CollectionPage() {
     [loggedInUser?.id, collection?.userId],
   );
 
-  // --- State for Sharing ---
-  const [isSharing, setIsSharing] = useState(false); // Share dialog open state
+  const [isSharing, setIsSharing] = useState(false);
   const [targetUsername, setTargetUsername] = useState("");
   const [isGrantingAccess, setIsGrantingAccess] = useState(false);
   const [grantAccessError, setGrantAccessError] = useState<string | null>(null);
   const [grantAccessSuccess, setGrantAccessSuccess] = useState(false);
 
-  // Get owner username and shared list from collection data
   const ownerUsername = collection?.ownerUsername;
   const sharedWithList = useMemo(
     () => collection?.sharedWith ?? [],
     [collection?.sharedWith],
   );
 
-  // Function to handle adding an item
   const handleAddItem = async (item: PaletteItem) => {
     if (!collectionSlug || typeof collectionSlug !== "string") return;
     setIsAdding(true);
@@ -201,8 +178,6 @@ export default function CollectionPage() {
         thumbnail,
       };
       console.log("Attempting to add item:", requestBody);
-      // Pass the correct mutation key or options if needed,
-      // but default mutate() should refetch the same swrKey
       await addCollectionItem(collectionSlug, requestBody);
       console.log("Item added successfully, revalidating list...");
       mutateItems();
@@ -226,7 +201,6 @@ export default function CollectionPage() {
     try {
       await removeCollectionItem(collectionSlug, collectionItemId);
       console.log(`Item ${collectionItemId} removed, revalidating list...`);
-      // SWR will automatically refetch the data for the key after mutateItems()
       mutateItems();
     } catch (err) {
       console.error(`Error removing item ${collectionItemId}:`, err);
@@ -239,7 +213,6 @@ export default function CollectionPage() {
     }
   };
 
-  // Handler to open the edit dialog
   const handleOpenEditDialog = () => {
     setEditableNote(collection?.note || "");
     setEditableIsPublic(collection?.isPublic ?? true);
@@ -247,7 +220,6 @@ export default function CollectionPage() {
     setIsEditing(true);
   };
 
-  // Handler to save the edited note
   const handleSaveChanges = async () => {
     if (!collectionSlug || typeof collectionSlug !== "string") return;
 
@@ -274,13 +246,10 @@ export default function CollectionPage() {
     }
   };
 
-  // --- Like/Unlike Handler ---
   const handleLikeToggle = async () => {
     if (!collectionSlug || typeof collectionSlug !== "string") return;
 
-    // 1. Check if logged in
     if (!loggedInUser) {
-      // Redirect to login, potentially passing redirect back URL
       router.push(`/login?redirect=/${userSlug}/${collectionSlug}`);
       return;
     }
@@ -288,11 +257,9 @@ export default function CollectionPage() {
     setIsLiking(true);
     setLikeError(null);
 
-    // Current state before optimistic update
     const currentLikedStatus = currentUserHasLiked;
     const currentLikeCount = likeCount;
 
-    // Optimistic UI Update Data
     const optimisticData: CollectionWithItems | undefined = data
       ? {
           ...data,
@@ -306,40 +273,30 @@ export default function CollectionPage() {
         }
       : undefined;
 
-    // Perform Optimistic Update via SWR Mutate
-    // false means don't revalidate immediately, we'll do it after the API call
     if (optimisticData) {
       mutateItems(optimisticData, false);
     }
 
     try {
-      // 2. Call the appropriate API function
       if (currentLikedStatus) {
         await unlikeCollection(collectionSlug);
       } else {
         await likeCollection(collectionSlug);
       }
       console.log("Like/Unlike successful");
-      // 3. Trigger revalidation from server to confirm
       mutateItems();
     } catch (err) {
       console.error("Error liking/unliking collection:", err);
       setLikeError(
         err instanceof Error ? err.message : "Failed to update like status",
       );
-      // Revert optimistic update on error
-      mutateItems(data, false); // Revert to original data without revalidating yet
-      // Optionally trigger a delayed revalidation after revert if needed
-      // setTimeout(() => mutateItems(), 1000);
-
-      // Clear error after a few seconds
+      mutateItems(data, false);
       setTimeout(() => setLikeError(null), 5000);
     } finally {
       setIsLiking(false);
     }
   };
 
-  // --- Share Handler ---
   const handleGrantAccess = async () => {
     if (
       !collectionSlug ||
@@ -360,7 +317,6 @@ export default function CollectionPage() {
       setGrantAccessSuccess(true);
       setTargetUsername("");
 
-      // Trigger SWR revalidation to update displayed shared list
       mutateItems();
 
       setTimeout(() => {
@@ -379,7 +335,6 @@ export default function CollectionPage() {
   };
 
   if (authLoading || (itemsLoading && !data)) {
-    // Show loading if auth or initial data fetch is happening
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-blue-500"></div>
@@ -387,9 +342,7 @@ export default function CollectionPage() {
     );
   }
 
-  // Handle fetch errors after initial loading state
   if (itemsError) {
-    // Check for specific permission error
     const isForbidden = itemsError.message?.includes("(Status: 403)");
     return (
       <div className="min-h-screen p-4">
@@ -410,8 +363,6 @@ export default function CollectionPage() {
     );
   }
 
-  // Handle collection not found (data is null/empty after loading&no error)
-  // Note: A 404 from the API will also be caught by itemsError above
   if (!collection) {
     return (
       <div className="flex min-h-screen flex-col">
@@ -426,10 +377,6 @@ export default function CollectionPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      {/* Remove desktop LeftNav rendering from here */}
-      {/* <div className="hidden md:flex">
-        <LeftNav />
-      </div> */}
       <div className="flex flex-1 flex-col items-center py-10">
         <div className="container w-full px-4 md:px-6">
           <div>
@@ -437,7 +384,6 @@ export default function CollectionPage() {
               <h1 className="font-display text-5xl font-bold text-slate-700 dark:text-slate-200">
                 {collection.name}
               </h1>
-              {/* Show owner/shared status */}
               {!isOwner && ownerUsername && (
                 <span className="text-sm text-gray-500">
                   Shared by {ownerUsername}
@@ -455,13 +401,12 @@ export default function CollectionPage() {
                 </span>
               )}
             </div>
-            {/* Like Button Area */}
             <div className="mt-1 flex items-center space-x-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleLikeToggle}
-                disabled={isLiking || isOwner} // Disable if owner OR liking
+                disabled={isLiking || isOwner}
                 className={cn("bg-white", isOwner && "hidden")}
                 title={
                   isOwner
@@ -494,9 +439,7 @@ export default function CollectionPage() {
             </p>
           )}
 
-          {/* Edit/Share Buttons Row */}
           <div className="mb-4 flex space-x-2">
-            {/* Edit Button (only for owner) */}
             {isOwner && (
               <Button
                 variant="outline"
@@ -507,7 +450,6 @@ export default function CollectionPage() {
                 Edit Details
               </Button>
             )}
-            {/* Share Button (only for owner) */}
             {isOwner && (
               <Button
                 className="bg-white"
@@ -557,120 +499,14 @@ export default function CollectionPage() {
             </div>
           )}
 
-          {/* Restore Collection Items List */}
           <h2 className="my-4 text-lg font-bold">Items in Collection</h2>
-          {itemsLoading && items.length === 0 && (
-            <div className="flex items-center justify-center">
-              <div className="h-6 w-6 animate-spin rounded-full border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-          )}
-          {!itemsLoading && items.length === 0 && (
-            <div className="text-center text-gray-500">
-              No items in this collection yet.
-            </div>
-          )}
-          {items.length > 0 && (
-            <ul className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] [grid-template-rows:repeat(2,min-content)] gap-2">
-              {items.map((item) => {
-                const displayItem = item.channel || item.video;
-                const channelInfo = item.channel || item.video?.channel;
-                const isVideo = !!item.video;
-                const isCurrentlyRemoving = removingItemId === item.id;
-
-                // Skip rendering if essential data is missing
-                if (!displayItem) {
-                  console.warn(
-                    "Skipping rendering item without display data:",
-                    item,
-                  );
-                  return null;
-                }
-                // Use a placeholder if channelInfo is missing but we still want to show the item
-                const displayChannelInfo = channelInfo || {
-                  title: "Unknown Channel",
-                  youtubeId: "",
-                };
-
-                return (
-                  <li
-                    key={item.id}
-                    className={`flex flex-col items-center justify-center gap-3 rounded-md border p-2 ${
-                      isCurrentlyRemoving ? "opacity-50" : ""
-                    }`}
-                  >
-                    {displayItem.thumbnail ? (
-                      <YouTubeThumbnail
-                        url={displayItem.thumbnail}
-                        alt={displayItem.title}
-                        size="2xl"
-                      />
-                    ) : (
-                      <div className="flex h-24 w-24 items-center justify-center rounded bg-gray-200 text-xs text-gray-400">
-                        No Img
-                      </div>
-                    )}
-                    <span className="flex flex-1 flex-col text-center">
-                      {item.channel ? (
-                        <a
-                          href={`https://www.youtube.com/channel/${item.channel.youtubeId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="line-clamp-1 font-medium hover:underline"
-                          title={displayItem.title} // Add title attribute for full text on hover
-                        >
-                          {displayItem.title}
-                        </a>
-                      ) : (
-                        <span
-                          className="line-clamp-1 font-medium"
-                          title={displayItem.title}
-                        >
-                          {displayItem.title}
-                        </span>
-                      )}
-                      {isVideo && (
-                        <span
-                          className="line-clamp-1 text-sm text-gray-500"
-                          title={displayChannelInfo.title}
-                        >
-                          Channel:{" "}
-                          {displayChannelInfo.youtubeId ? (
-                            <a
-                              href={`https://www.youtube.com/channel/${displayChannelInfo.youtubeId}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="hover:underline"
-                            >
-                              {displayChannelInfo.title}
-                            </a>
-                          ) : (
-                            <span>{displayChannelInfo.title}</span>
-                          )}
-                        </span>
-                      )}
-                    </span>
-                    {isOwner && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveItem(item.id)}
-                        disabled={isCurrentlyRemoving}
-                        aria-label="Remove item"
-                        className="mt-auto" // Push button towards the bottom
-                      >
-                        {isCurrentlyRemoving ? (
-                          <div className="h-4 w-4 animate-spin rounded-full border-t-2 border-b-2 border-gray-500"></div>
-                        ) : (
-                          <X className="h-4 w-4" />
-                        )}
-                      </Button>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          {/* End Restore Collection Items List */}
+          <CollectionItems
+            items={items}
+            isLoading={itemsLoading}
+            isOwner={isOwner}
+            onRemoveItem={handleRemoveItem}
+            removingItemId={removingItemId}
+          />
 
           <Dialog open={isEditing} onOpenChange={setIsEditing}>
             <DialogContent className="sm:max-w-[425px]">
@@ -736,7 +572,6 @@ export default function CollectionPage() {
             </DialogContent>
           </Dialog>
 
-          {/* --- Share Dialog --- */}
           <Dialog open={isSharing} onOpenChange={setIsSharing}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>

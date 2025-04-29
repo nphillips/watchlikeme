@@ -10,7 +10,6 @@ import { Button } from "../ui/button";
 import { Menu } from "lucide-react";
 import { Collection } from "@/interfaces/index";
 
-// Define props
 interface LeftNavOverlayProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;

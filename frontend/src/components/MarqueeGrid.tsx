@@ -1,5 +1,3 @@
-// frontend/components/MarqueeGrid.tsx
-
 import { useMemo } from "react";
 import Image from "next/image";
 import channelThumbnails from "@/components/images";
@@ -9,13 +7,11 @@ const ROW_COUNT = 5;
 const ROW_SIZES = [150, 100, 75, 120, 150];
 
 export default function MarqueeGrid() {
-  // 1) Shuffle original thumbnails into ROW_COUNT rows
   const rows = useMemo(
     () => generateMarqueeRows(channelThumbnails, ROW_COUNT),
     [],
   );
 
-  // 2) Triple-repeat each row for seamless -33.333% loop
   const repeatedRows = useMemo(
     () => rows.map((images) => [...images, ...images, ...images]),
     [rows],
@@ -26,8 +22,8 @@ export default function MarqueeGrid() {
       {repeatedRows.map((looped, rowIdx) => {
         const baseLength = rows[rowIdx].length;
         const duration = 200 + rowIdx * 80;
-        const size = ROW_SIZES[rowIdx]; // size in px
-        const sizeClass = `w-[${size}px] h-[${size}px]`; // Tailwind arbitrary
+        const size = ROW_SIZES[rowIdx];
+        const sizeClass = `w-[${size}px] h-[${size}px]`;
 
         return (
           <div key={rowIdx} className="relative overflow-hidden py-2">

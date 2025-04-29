@@ -1,16 +1,12 @@
-"use client"; // Mark as client component if using hooks like SWR/React Query later, but for simple async fetch, server component is fine.
-// For now, let's make it a server component for simplicity.
+"use client";
 
 import Link from "next/link";
-// Import the correct API function and response type
 import { getCollections } from "@/lib/api/collections";
 import { UserCollectionsResponse, Collection } from "@/interfaces/index";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
-// Let's make this a client component to handle loading/error states easily
 export default function CollectionsPage() {
-  // State to hold both owned and shared collections
   const [ownedCollections, setOwnedCollections] = useState<Collection[]>([]);
   const [sharedCollections, setSharedCollections] = useState<Collection[]>([]);
   const [collectionsLoading, setCollectionsLoading] = useState(true);
@@ -23,7 +19,6 @@ export default function CollectionsPage() {
         setCollectionsLoading(true);
         setError(null);
         try {
-          // Fetch data using the updated function
           const {
             ownedCollections: fetchedOwned,
             sharedCollections: fetchedShared,
@@ -43,7 +38,7 @@ export default function CollectionsPage() {
     } else if (!authLoading && !user) {
       setCollectionsLoading(false);
       setError(null);
-      setOwnedCollections([]); // Ensure lists are empty
+      setOwnedCollections([]);
       setSharedCollections([]);
     }
   }, [authLoading, user]);
@@ -89,7 +84,6 @@ export default function CollectionsPage() {
 
           {!collectionsLoading && !error && (
             <div className="space-y-6">
-              {/* My Collections Section */}
               <div>
                 <h2 className="mb-2 text-xl font-semibold">My Collections</h2>
                 {ownedCollections.length === 0 ? (
@@ -101,7 +95,6 @@ export default function CollectionsPage() {
                     {ownedCollections.map((collection) => (
                       <li key={collection.id}>
                         <Link
-                          // Link uses the owner's (your) username
                           href={`/${collection.userSlug || user.username}/${
                             collection.slug
                           }`}
@@ -109,7 +102,6 @@ export default function CollectionsPage() {
                         >
                           {collection.name}
                         </Link>
-                        {/* Show shared status */}
                         {collection.sharedWith &&
                           collection.sharedWith.length > 0 && (
                             <span className="ml-2 text-xs text-gray-400">
@@ -136,10 +128,8 @@ export default function CollectionsPage() {
                     ))}
                   </ul>
                 )}
-                {/* TODO: Add button to create new collection */}
               </div>
 
-              {/* Shared With Me Section */}
               <div>
                 <h2 className="mb-2 text-xl font-semibold">Shared With Me</h2>
                 {sharedCollections.length === 0 ? (
@@ -151,13 +141,11 @@ export default function CollectionsPage() {
                     {sharedCollections.map((collection) => (
                       <li key={collection.id}>
                         <Link
-                          // Link uses the owner's username
                           href={`/${collection.ownerUsername}/${collection.slug}`}
                           className="text-blue-500 hover:text-blue-700"
                         >
                           {collection.name}
                         </Link>
-                        {/* Show owner */}
                         <span className="ml-2 text-xs text-gray-400">
                           (Shared by: {collection.ownerUsername})
                         </span>

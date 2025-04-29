@@ -66,8 +66,6 @@ export function RegisterForm({
         throw new Error(errorData.message || "Registration failed");
       }
 
-      // Instead of using router.push, use window.location for a full page refresh
-      // This ensures cookies are properly recognized
       window.location.href = "/";
     } catch (err) {
       setError(

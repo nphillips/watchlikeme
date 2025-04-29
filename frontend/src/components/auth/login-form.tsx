@@ -25,7 +25,6 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Check if user just registered
   useEffect(() => {
     if (searchParams.get("registered") === "true") {
       setSuccessMessage("Registration successful! Please log in.");
@@ -45,7 +44,6 @@ export function LoginForm() {
     },
   });
 
-  // Watch email for Google auth
   const currentEmail = watch("email");
 
   const onSubmit = async (data: LoginFormValues) => {
@@ -63,7 +61,6 @@ export function LoginForm() {
 
       if (!response.ok) {
         if (responseData.authMethod === "google") {
-          // This is a Google-only account
           setGoogleAuthRequired(true);
           setEmailForGoogle(data.email);
           setError(
@@ -75,7 +72,6 @@ export function LoginForm() {
         throw new Error(responseData.message || "Login failed");
       }
 
-      // Redirect to home page after successful login
       window.location.assign("/");
     } catch (err) {
       setError(

@@ -34,7 +34,6 @@ const CollectionsList = ({
 
   return (
     <div className="space-y-4">
-      {/* My Collections Section */}
       <div>
         <div className="mb-6">
           <NewColTrigger />
@@ -54,15 +53,12 @@ const CollectionsList = ({
                 >
                   {collection.name}
                 </Link>
-                {/* Optional: Add shared/private status indicators if needed */}
               </li>
             ))}
           </ul>
         )}
-        {/* TODO: Add button to create new collection? */}
       </div>
 
-      {/* Shared With Me Section */}
       <div>
         <h2 className="mb-2 text-lg font-semibold">Shared With Me</h2>
         {sharedCollections.length === 0 ? (

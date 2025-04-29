@@ -17,18 +17,15 @@ export default function Home() {
   useEffect(() => {
     async function checkAuth() {
       try {
-        // Check for tokens
         const authSuccess = document.cookie.includes("auth_success=true");
         const hasJwt = document.cookie.includes("token=");
         const hasAuthToken = document.cookie.includes("auth_token=");
 
-        // Debug logging
         console.log("Cookies:", document.cookie);
         console.log("Has JWT token:", hasJwt);
         console.log("Has auth_token:", hasAuthToken);
 
         if (hasJwt || hasAuthToken) {
-          // Try to get user info
           const response = await fetch("/api/users/me");
           console.log("/api/users/me response status:", response.status);
 
@@ -43,8 +40,6 @@ export default function Home() {
             setIsAuthenticated(false);
           }
         } else if (authSuccess) {
-          // User has only authenticated with Google but doesn't have a WatchLikeMe account
-          // Redirect them to registration with a parameter indicating they're coming from Google
           router.push("/register?fromGoogle=true");
           return;
         } else {
@@ -63,7 +58,6 @@ export default function Home() {
 
   const handleSignOut = async () => {
     try {
-      // Clear cookies client-side
       document.cookie =
         "google_tokens=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; max-age=0";
       document.cookie =
@@ -77,22 +71,18 @@ export default function Home() {
 
       console.log("Signing out, clearing cookies client-side");
 
-      // Also clear cookies server-side via the logout API
       await fetch("/api/auth/logout");
 
       console.log("Logout API called, reloading page");
 
-      // Force a full page reload
       window.location.href = "/";
     } catch (error) {
       console.error("Error during sign out:", error);
-      // Force reload anyway
       window.location.href = "/";
     }
   };
 
   const handleLinkGoogle = () => {
-    // Add a state param to indicate we're linking accounts
     window.location.href = "/api/auth/google?linkAccount=true";
   };
 

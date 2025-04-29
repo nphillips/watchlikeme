@@ -4,7 +4,7 @@ import { useState } from "react";
 import Nav from "@/components/Nav";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { unlinkGoogleAccount } from "@/lib/api/users"; // Import the unlink function
+import { unlinkGoogleAccount } from "@/lib/api/users";
 import Link from "next/link";
 
 export default function AccountPage() {
@@ -17,9 +17,6 @@ export default function AccountPage() {
     setUnlinkError(null);
     try {
       await unlinkGoogleAccount();
-      // Success! Need to refresh user state or redirect?
-      // For now, let's reload the page to refetch user state via useAuth
-      // A more sophisticated approach might involve updating the useAuth state directly
       window.location.reload();
     } catch (err) {
       console.error("Error unlinking Google account:", err);
@@ -66,7 +63,6 @@ export default function AccountPage() {
               <h2 className="mb-2 text-lg font-semibold">User Information</h2>
               <p>Email: {user.email}</p>
               <p>Username: {user.username}</p>
-              {/* Add other user details as needed */}
             </div>
 
             <div>
@@ -90,14 +86,12 @@ export default function AccountPage() {
               ) : (
                 <div>
                   <p className="mb-2 text-gray-600">No Google Account Linked</p>
-                  {/* Use the handleLinkGoogle function from useAuth */}
                   <Button onClick={handleLinkGoogle}>
                     Link Google Account
                   </Button>
                 </div>
               )}
             </div>
-            {/* Add sections for password change, etc. later */}
           </div>
         )}
       </div>

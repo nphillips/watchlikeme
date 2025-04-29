@@ -1,17 +1,12 @@
 const { loadEnvConfig } = require("@next/env");
 
-// Load environment variables from root .env file
 loadEnvConfig(process.cwd());
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: [
-      "yt3.ggpht.com", // YouTube profile pictures
-      "yt3.googleusercontent.com", // Other YouTube thumbnails
-      "i.ytimg.com", // YouTube video thumbnails
-    ],
+    domains: ["yt3.ggpht.com", "yt3.googleusercontent.com", "i.ytimg.com"],
   },
   env: {
     NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL,
@@ -22,7 +17,7 @@ const nextConfig = {
       {
         source: "/collections",
         destination: "/",
-        permanent: true, // Use true for permanent redirect (308)
+        permanent: true,
       },
     ];
   },

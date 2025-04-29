@@ -20,7 +20,6 @@ export default function RegisterPage() {
 
     if (fromGoogle === "true") {
       setIsLoading(true);
-      // Fetch the Google profile data from the session
       fetch("/api/auth/google/profile")
         .then((res) => res.json())
         .then((data) => {
@@ -34,7 +33,6 @@ export default function RegisterPage() {
         })
         .catch((error) => {
           console.error("Error fetching Google profile:", error);
-          // If we can't get the profile data, redirect to regular registration
           window.location.href = "/register";
         })
         .finally(() => {
@@ -45,7 +43,12 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Nav />
+      <Nav
+        isAuthenticated={false}
+        user={null}
+        handleLinkGoogle={() => {}}
+        onMenuClick={() => {}}
+      />
       <div className="flex flex-1 flex-col items-center py-10">
         <h1 className="mb-6 text-center text-2xl font-bold">Register</h1>
         {isLoading ? (

@@ -1,10 +1,8 @@
 import { config } from "dotenv";
 import { join } from "path";
 
-// Load environment variables from the root .env file
 config({ path: join(process.cwd(), "..", ".env") });
 
-// Export the environment variables
 export const env = {
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
@@ -14,7 +12,6 @@ export const env = {
   BACKEND_URL: process.env.BACKEND_URL,
 } as const;
 
-// Validate environment variables
 if (!env.GOOGLE_CLIENT_ID) {
   throw new Error("GOOGLE_CLIENT_ID is not set");
 }

@@ -7,6 +7,64 @@ import {
 } from "../../interfaces/index";
 import { backendFetch } from "../backend-fetch";
 
+// Define the expected response structure for the new endpoint
+// It includes the fields from Collection plus the userSlug
+interface CreatedCollectionResponse extends Collection {
+  userSlug: string; // Added by the backend route
+}
+
+export async function createCollection(
+  name: string,
+  slug: string,
+): Promise<CreatedCollectionResponse> {
+  const path = "/api/collections";
+  console.log(`[API Client] Creating collection via: POST ${path}`, {
+    name,
+    slug,
+  });
+
+  const response = await backendFetch(path, {
+    method: "POST",
+    body: JSON.stringify({ name, slug }),
+  });
+
+  console.log(`[API Client] POST ${path} status: ${response.status}`);
+
+  if (!response.ok) {
+    let errorBody = `Failed to create collection: ${response.statusText}`;
+    const contentType = response.headers.get("content-type");
+    try {
+      if (contentType && contentType.includes("application/json")) {
+        const body = await response.json();
+        errorBody = body.error || body.message || errorBody;
+        console.error("[API Client] Error response body (JSON):", body);
+        // If the backend provided a field hint, include it
+        if (body.field) {
+          errorBody += ` (Field: ${body.field})`;
+        }
+      } else {
+        const textBody = await response.text();
+        if (textBody) {
+          errorBody = textBody;
+          console.error(
+            "[API Client] Error response body (non-JSON):",
+            textBody,
+          );
+        } else {
+          console.log("[API Client] No error body returned.");
+        }
+      }
+    } catch (e) {
+      console.error("[API Client] Failed to parse/read error response body", e);
+    }
+    throw new Error(`${errorBody} (Status: ${response.status})`);
+  }
+
+  const newCollection: CreatedCollectionResponse = await response.json();
+  console.log(`[API Client] Successfully created collection:`, newCollection);
+  return newCollection;
+}
+
 export async function getCollections(): Promise<UserCollectionsResponse> {
   const response = await backendFetch("/api/collections", { method: "GET" });
 

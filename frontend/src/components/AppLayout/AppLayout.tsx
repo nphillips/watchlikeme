@@ -7,9 +7,10 @@ import LeftNavOverlay from "@/components/LeftNav/LeftNavOverlay";
 import LeftNav from "@/components/LeftNav/LeftNav";
 import { useAuth } from "@/hooks/useAuth";
 import { getCollections } from "@/lib/api/collections";
-import { Collection } from "@/interfaces/index";
+import { Collection, UserCollectionsResponse } from "@/interfaces/index";
 import { CollectionsContext } from "@/context/CollectionsContext";
 import { cn } from "@/lib/utils";
+import useSWR from "swr";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -25,40 +26,17 @@ const AppLayout = ({ children }: AppLayoutProps) => {
     isAuthenticated,
     handleLinkGoogle,
   } = useAuth();
-  const [ownedCollections, setOwnedCollections] = useState<Collection[]>([]);
-  const [sharedCollections, setSharedCollections] = useState<Collection[]>([]);
-  const [collectionsLoading, setCollectionsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!authLoading && user) {
-      async function loadCollections() {
-        setCollectionsLoading(true);
-        setError(null);
-        try {
-          const {
-            ownedCollections: fetchedOwned,
-            sharedCollections: fetchedShared,
-          } = await getCollections();
-          setOwnedCollections(fetchedOwned);
-          setSharedCollections(fetchedShared);
-        } catch (err) {
-          console.error("[AppLayout] Failed to load collections:", err);
-          setError(
-            err instanceof Error ? err.message : "An unknown error occurred",
-          );
-        } finally {
-          setCollectionsLoading(false);
-        }
-      }
-      loadCollections();
-    } else if (!authLoading && !user) {
-      setCollectionsLoading(false);
-      setError(null);
-      setOwnedCollections([]);
-      setSharedCollections([]);
-    }
-  }, [authLoading, user]);
+  const swrKey = !authLoading && user ? "/api/collections" : null;
+
+  const {
+    data: collectionsData,
+    error: collectionsError,
+    isLoading: swrLoading,
+  } = useSWR<UserCollectionsResponse>(swrKey, getCollections, {
+    revalidateOnFocus: false,
+    shouldRetryOnError: false,
+  });
 
   useEffect(() => {
     console.log("AppLayout: isSheetOpen state changed to:", isSheetOpen);
@@ -71,7 +49,13 @@ const AppLayout = ({ children }: AppLayoutProps) => {
     setIsSheetOpen(true);
   };
 
-  const isLoading = collectionsLoading || authLoading;
+  const isLoading = swrLoading || authLoading;
+
+  const ownedCollections = collectionsData?.ownedCollections ?? [];
+  const sharedCollections = collectionsData?.sharedCollections ?? [];
+  const error = collectionsError
+    ? collectionsError.message || "Failed to load collections"
+    : null;
 
   const collectionsContextValue = {
     ownedCollections,

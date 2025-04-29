@@ -491,14 +491,19 @@ router.get("/:collectionSlug/items", authenticateToken, async (req, res) => {
     const likeCount = collectionDetails._count?.likes ?? 0;
     const currentUserHasLiked = (collectionDetails.likes?.length ?? 0) > 0;
     const ownerUsername = collectionDetails.owner?.username;
-    const grants = collectionDetails.accessGrants ?? [];
+
+    // ---> START CHANGE: Map accessGrants to sharedWith
+    const sharedWith = (collectionDetails.accessGrants ?? []).map(
+      (grant) => grant.grantedToUser,
+    );
+    // ---> END CHANGE
 
     const {
       items: _,
       likes: __,
       _count: ___,
       owner: ____,
-      accessGrants: _____,
+      accessGrants: _____, // Exclude original accessGrants from rest
       ...collectionData
     } = collectionDetails;
 
@@ -508,7 +513,7 @@ router.get("/:collectionSlug/items", authenticateToken, async (req, res) => {
         likeCount,
         currentUserHasLiked,
         ownerUsername,
-        accessGrants: grants,
+        sharedWith: sharedWith, // <-- Return sharedWith instead of accessGrants
       },
       items: items,
     });

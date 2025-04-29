@@ -30,7 +30,7 @@ export default function Home() {
     <div className="flex min-h-screen flex-col pb-10">
       <div>
         {user ? (
-          <div className="px-4 py-8 md:px-6">
+          <div className="px-8 py-8 md:px-8">
             <h2 className="text-xl font-semibold">Home Page Content</h2>
             <p className="mt-2 text-gray-600 dark:text-gray-400">
               Welcome back, {user.username || user.email}!

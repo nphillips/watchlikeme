@@ -367,7 +367,7 @@ export default function CollectionPage() {
     return (
       <div className="flex min-h-screen flex-col">
         <div className="flex flex-1 flex-col items-center py-10">
-          <div className="container w-full px-4 md:px-6">
+          <div className="container w-full px-4 md:px-8">
             <p>Collection not found.</p>
           </div>
         </div>
@@ -378,10 +378,10 @@ export default function CollectionPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <div className="flex flex-1 flex-col items-center py-10">
-        <div className="container w-full px-4 md:px-6">
+        <div className="container w-full px-4 md:px-8">
           <div>
             <div>
-              <h1 className="font-display text-5xl font-bold text-slate-700 dark:text-slate-200">
+              <h1 className="font-display text-2xl font-bold text-slate-700 md:text-4xl dark:text-slate-200">
                 {collection.name}
               </h1>
               {!isOwner && ownerUsername && (

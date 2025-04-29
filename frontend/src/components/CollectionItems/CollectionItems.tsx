@@ -33,7 +33,7 @@ const CollectionItems = ({
   }
 
   return (
-    <ul className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] [grid-template-rows:repeat(2,min-content)] gap-2">
+    <ul className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] [grid-template-rows:repeat(2,min-content)] gap-4">
       {items.map((item) => (
         <CollectionItem
           key={item.id}

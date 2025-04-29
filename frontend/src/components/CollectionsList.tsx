@@ -96,7 +96,7 @@ const CollectionsList = ({
 
                   {/* Right side: Date */}
                   {formattedDate && (
-                    <span className="ml-2 flex-shrink-0 text-xs whitespace-nowrap text-gray-400 dark:text-gray-500">
+                    <span className="mt-1 ml-2 flex-shrink-0 text-xs whitespace-nowrap text-gray-400 dark:text-gray-500">
                       {formattedDate}
                     </span>
                   )}

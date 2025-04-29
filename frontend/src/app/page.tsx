@@ -1,13 +1,10 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import Link from "next/link";
 import { useCollections } from "@/context/CollectionsContext";
 import CollectionsList from "@/components/CollectionsList";
 import MarqueeGrid from "@/components/MarqueeGrid";
-import thumbnailRows from "@/components/images";
-import Image from "next/image";
+import { NewColTrigger } from "@/components/NewCol";
 
 export default function Home() {
   const { user, loading: authLoading, handleLinkGoogle } = useAuth();
@@ -33,12 +30,11 @@ export default function Home() {
     <div className="flex min-h-screen flex-col pb-10">
       <div>
         {user ? (
-          <div>
+          <div className="px-4 py-8 md:px-6">
             <h2 className="text-xl font-semibold">Home Page Content</h2>
             <p className="mt-2 text-gray-600 dark:text-gray-400">
               Welcome back, {user.username || user.email}!
             </p>
-            <Button className="mt-4">Create Collection</Button>
 
             <div className="mt-6 md:hidden">
               <CollectionsList

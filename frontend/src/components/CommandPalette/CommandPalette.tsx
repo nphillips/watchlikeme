@@ -52,7 +52,7 @@ export function CommandPalette({
   // Fetch subscriptions only when open & blank query
   const { data: subs } = useSWR<Channel[]>(
     () => (open && query === "" ? "/api/channels" : null),
-    fetcher
+    fetcher,
   );
 
   // Fetch YouTube search when open & query non‑empty
@@ -61,7 +61,7 @@ export function CommandPalette({
       open && query.length > 0
         ? `/api/channels?q=${encodeURIComponent(query)}`
         : null,
-    fetcher
+    fetcher,
   );
 
   // Toggle on ⌘K / Ctrl+K, close on Esc
@@ -89,12 +89,12 @@ export function CommandPalette({
         <Button variant="outline" className="w-full justify-start space-x-2">
           <Search className="h-4 w-4" />
           <span>Search YouTube or subscriptions…</span>
-          <kbd className="ml-auto rounded border bg-muted px-1 text-[10px] font-sans">
+          <kbd className="bg-muted ml-auto rounded border px-1 font-sans text-[10px]">
             ⌘K
           </kbd>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="p-0 w-[600px]">
+      <PopoverContent className="w-[600px] p-0">
         <Command>
           <CommandInput
             placeholder="Type to search YouTube or add from your subscriptions…"

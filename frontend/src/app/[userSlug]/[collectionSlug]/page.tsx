@@ -434,7 +434,9 @@ export default function CollectionPage() {
         <div className="container w-full px-4 md:px-6">
           <div>
             <div>
-              <h1 className="text-2xl font-bold">{collection.name}</h1>
+              <h1 className="font-display text-5xl font-bold text-slate-700 dark:text-slate-200">
+                {collection.name}
+              </h1>
               {/* Show owner/shared status */}
               {!isOwner && ownerUsername && (
                 <span className="text-sm text-gray-500">
@@ -508,6 +510,7 @@ export default function CollectionPage() {
             {/* Share Button (only for owner) */}
             {isOwner && (
               <Button
+                className="bg-white"
                 variant="outline"
                 size="sm"
                 onClick={() => {

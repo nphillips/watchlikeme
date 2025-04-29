@@ -2,6 +2,7 @@
 
 import { Collection } from "@/interfaces/index";
 import Link from "next/link";
+import { NewColTrigger } from "./NewCol";
 
 interface CollectionsListProps {
   ownedCollections: Collection[];
@@ -35,6 +36,9 @@ const CollectionsList = ({
     <div className="space-y-4">
       {/* My Collections Section */}
       <div>
+        <div className="mb-6">
+          <NewColTrigger />
+        </div>
         <h2 className="mb-2 text-lg font-semibold">My Collections</h2>
         {ownedCollections.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">

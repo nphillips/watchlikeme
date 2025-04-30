@@ -49,17 +49,17 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Determine allowed origin based on environment
-const allowedOrigin =
-  process.env.NODE_ENV === "production"
-    ? "https://watchlikeme-staging.netlify.app" // Your Netlify URL
-    : env.ORIGIN; // Use env.ORIGIN (localhost) for local dev
+// const allowedOrigin = process.env.NODE_ENV === 'production'
+//   ? 'https://watchlikeme-staging.netlify.app' // Your Netlify URL
+//   : env.ORIGIN; // Use env.ORIGIN (localhost) for local dev
 
-console.log(`[CORS] Configuring for origin: ${allowedOrigin}`); // Add log
+// console.log(`[CORS] Configuring for origin: ${allowedOrigin}`); // Add log
 
-// Use the determined origin
+// Temporarily hardcode Netlify origin for debugging
+console.log(`[CORS] Forcing origin: https://watchlikeme-staging.netlify.app`);
 app.use(
   cors({
-    origin: allowedOrigin,
+    origin: "https://watchlikeme-staging.netlify.app",
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "Cookie"],

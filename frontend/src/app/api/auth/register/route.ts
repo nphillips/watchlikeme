@@ -10,6 +10,8 @@ const registerSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  console.log("[Register API] Function execution started.");
+
   try {
     const body = await request.json();
 

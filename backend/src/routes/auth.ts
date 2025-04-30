@@ -7,6 +7,21 @@ import { getGoogleTokensForUser } from "../lib/google";
 const prisma = new PrismaClient();
 const router = express.Router();
 
+// Extend Request type to include the authPayload property
+declare global {
+  namespace Express {
+    interface Request {
+      authPayload?: {
+        id: string;
+        email: string;
+        role: string;
+      };
+      // Keep existing user type if any (assuming it's added elsewhere)
+      // user?: User | undefined;
+    }
+  }
+}
+
 export const verifyToken: express.RequestHandler = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
@@ -23,7 +38,8 @@ export const verifyToken: express.RequestHandler = (req, res, next) => {
       role: string;
     };
 
-    req.user = {
+    // Attach payload to req.authPayload instead of req.user
+    req.authPayload = {
       id: payload.sub,
       email: payload.email,
       role: payload.role,
@@ -82,7 +98,7 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign(
       { sub: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET!,
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
 
     return res.json({
@@ -120,7 +136,7 @@ router.post("/google-login", async (req, res) => {
     const token = jwt.sign(
       { sub: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET!,
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
 
     return res.json({
@@ -142,7 +158,11 @@ router.post("/google-login", async (req, res) => {
 router.post("/link-google", verifyToken, async (req, res) => {
   try {
     const { googleId, googleEmail, googleTokens } = req.body;
-    const userId = req.user.id;
+    // Check for req.authPayload existence and get userId from it
+    if (!req.authPayload) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+    const userId = req.authPayload.id;
 
     if (!googleId) {
       return res.status(400).json({ message: "Google ID is required" });
@@ -213,7 +233,11 @@ router.post("/link-google", verifyToken, async (req, res) => {
 
 router.get("/me/google-tokens", verifyToken, async (req, res, next) => {
   try {
-    const userId = req.user.id;
+    // Check for req.authPayload existence and get userId from it
+    if (!req.authPayload) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    const userId = req.authPayload.id;
     const tokens = await getGoogleTokensForUser(userId);
     if (!tokens) {
       return res.status(404).json({ error: "No Google tokens found" });
@@ -230,7 +254,11 @@ router.get("/me/google-tokens", verifyToken, async (req, res, next) => {
 
 router.get("/users/me/google-tokens", verifyToken, async (req, res, next) => {
   try {
-    const userId = req.user.id;
+    // Check for req.authPayload existence and get userId from it
+    if (!req.authPayload) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    const userId = req.authPayload.id;
     const tokens = await getGoogleTokensForUser(userId);
     if (!tokens) {
       return res.status(404).json({ error: "No Google tokens found" });

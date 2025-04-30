@@ -23,7 +23,7 @@ router.get("/", authenticateToken, async (req, res: Response) => {
 
     if (!authInfo) {
       console.error(
-        "[Channels Route] Authentication info missing after middleware."
+        "[Channels Route] Authentication info missing after middleware.",
       );
       return res
         .status(401)
@@ -42,9 +42,16 @@ router.get("/", authenticateToken, async (req, res: Response) => {
 
     if (!accessToken) {
       console.error(
-        "[Channels Route] No Google access token found in auth info"
+        "[Channels Route] No Google access token found in auth info",
       );
       return res.status(401).json({ error: "No Google access token found" });
+    }
+
+    if (!youtubeClient) {
+      console.error("[Channels Route] OAuth2 client is missing in auth info");
+      return res
+        .status(401)
+        .json({ error: "Google authentication client setup failed" });
     }
 
     console.log("[Channels Route] Using OAuth2 client from middleware");
@@ -75,21 +82,21 @@ router.get("/", authenticateToken, async (req, res: Response) => {
 
       if (!channelIds.length) {
         console.log(
-          "[Channels Route] No valid channel IDs found in subscriptions"
+          "[Channels Route] No valid channel IDs found in subscriptions",
         );
         return res.json([]);
       }
 
       console.log(
-        `[Channels Route] Fetching details for ${channelIds.length} channels...`
+        `[Channels Route] Fetching details for ${channelIds.length} channels...`,
       );
       const detailedChannels = await fetchChannelDetails(
         channelIds,
-        accessToken
+        accessToken,
       );
 
       console.log(
-        `[Channels Route] Received details for ${detailedChannels.length} channels`
+        `[Channels Route] Received details for ${detailedChannels.length} channels`,
       );
 
       if (userId) {
@@ -130,11 +137,11 @@ router.get("/", authenticateToken, async (req, res: Response) => {
         }
 
         console.log(
-          `Saved/Updated ${savedChannelData.length} channels to database for user ${userId}`
+          `Saved/Updated ${savedChannelData.length} channels to database for user ${userId}`,
         );
       } else {
         console.log(
-          "[Channels Route] No user ID found, skipping database mirroring"
+          "[Channels Route] No user ID found, skipping database mirroring",
         );
       }
 
@@ -146,7 +153,7 @@ router.get("/", authenticateToken, async (req, res: Response) => {
       }));
 
       console.log(
-        `[Channels Route] Returning ${formattedChannels.length} formatted channels`
+        `[Channels Route] Returning ${formattedChannels.length} formatted channels`,
       );
       res.json(formattedChannels);
     } catch (youtubeError) {
@@ -202,13 +209,18 @@ router.post("/refresh", authenticateToken, async (req, res: Response) => {
 
     if (!authInfo) {
       console.error(
-        "[Refresh Route] Authentication info missing after middleware."
+        "[Refresh Route] Authentication info missing after middleware.",
       );
       return res.status(401).json({ error: "Authentication required" });
     }
 
     const accessToken = authInfo.accessToken;
     const userId = authInfo.id;
+
+    if (!accessToken) {
+      console.error("[Refresh Route] Access token missing in auth info");
+      return res.status(401).json({ error: "Google access token is missing" });
+    }
 
     const result = await updateSubscriptionDetails(userId, accessToken);
 

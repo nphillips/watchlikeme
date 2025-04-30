@@ -8,7 +8,7 @@ import { prisma } from "./prisma";
  */
 export async function fetchChannelDetails(
   channelIds: string[],
-  accessToken: string
+  accessToken: string,
 ) {
   if (!channelIds.length) return [];
 
@@ -41,7 +41,7 @@ export async function fetchChannelDetails(
             channel.snippet?.thumbnails?.default?.url,
           subscriberCount: parseInt(
             channel.statistics?.subscriberCount || "0",
-            10
+            10,
           ),
         }));
 
@@ -65,7 +65,7 @@ export async function fetchChannelDetails(
 export async function refreshStaleChannelThumbnails(
   channelIds: string[],
   accessToken: string,
-  thresholdDays: number = 7
+  thresholdDays: number = 7,
 ) {
   if (!channelIds.length) return { updated: 0 };
 
@@ -95,7 +95,7 @@ export async function refreshStaleChannelThumbnails(
   const staleChannelIds = channels.map((c) => c.youtubeId);
   const channelDetails = await fetchChannelDetails(
     staleChannelIds,
-    accessToken
+    accessToken,
   );
 
   // Update each channel
@@ -124,7 +124,7 @@ export async function refreshStaleChannelThumbnails(
  */
 export async function updateSubscriptionDetails(
   userId: string,
-  accessToken: string
+  accessToken: string,
 ) {
   try {
     // Get user's subscribed channels from database
@@ -155,7 +155,7 @@ export async function updateSubscriptionDetails(
       await prisma.channel.update({
         where: { youtubeId: details.youtubeId },
         data: {
-          title: details.title,
+          title: details.title ?? undefined,
           thumbnail: details.thumbnail || undefined,
           thumbnailUpdatedAt: details.thumbnail ? now : undefined,
           subscriberCount: details.subscriberCount,

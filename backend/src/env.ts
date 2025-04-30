@@ -1,42 +1,30 @@
-import dotenv from "dotenv";
-import path from "path";
+// Remove dotenv import and config call
+// import dotenv from "dotenv";
+// import path from "path";
+// dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
-// Load environment variables from the root .env file
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
-
-// Log environment loading
-console.log(
-  "Loading environment variables from:",
-  path.resolve(__dirname, "../../.env")
-);
-
-// Define environment variables with fallbacks
+// Define environment variables directly from process.env
 export const env = {
-  // Database
-  DATABASE_URL:
-    process.env.DATABASE_URL || "postgresql://localhost:5432/watchlikeme_db",
-
-  // Auth
-  JWT_SECRET: process.env.JWT_SECRET || "development_jwt_secret",
-  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || "",
-  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || "",
-
-  // API Keys
-  YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY || "",
-
-  // URLs
-  ORIGIN: process.env.ORIGIN || "http://localhost:3000",
-  NEXT_PUBLIC_SITE_URL:
-    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+  DATABASE_URL: process.env.DATABASE_URL, // Keep check/throw below
+  JWT_SECRET: process.env.JWT_SECRET, // Keep check/throw below
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID, // Keep check/throw below
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET, // Keep check/throw below
+  YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY, // Keep check/throw below
+  ORIGIN: process.env.ORIGIN, // Keep check/throw below
+  NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL, // Keep check/throw below
 } as const;
 
-// Log environment variables that are loaded
-console.log("Environment variables loaded in backend/env.ts:", {
-  DATABASE_URL: env.DATABASE_URL ? "set" : "not set",
-  JWT_SECRET: env.JWT_SECRET ? "set" : "development_jwt_secret",
-  GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID ? "set" : "not set",
-  GOOGLE_CLIENT_SECRET: env.GOOGLE_CLIENT_SECRET ? "set" : "not set",
-  YOUTUBE_API_KEY: env.YOUTUBE_API_KEY ? "set" : "not set",
-  ORIGIN: env.ORIGIN,
-  NEXT_PUBLIC_SITE_URL: env.NEXT_PUBLIC_SITE_URL,
-});
+// Add runtime checks for ALL required backend variables
+if (!env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
+if (!env.JWT_SECRET) throw new Error("JWT_SECRET is not set");
+if (!env.GOOGLE_CLIENT_ID) throw new Error("GOOGLE_CLIENT_ID is not set");
+if (!env.GOOGLE_CLIENT_SECRET)
+  throw new Error("GOOGLE_CLIENT_SECRET is not set");
+if (!env.YOUTUBE_API_KEY) throw new Error("YOUTUBE_API_KEY is not set");
+if (!env.ORIGIN) throw new Error("ORIGIN is not set");
+// NEXT_PUBLIC_SITE_URL check is optional for backend, remove if not needed
+if (!env.NEXT_PUBLIC_SITE_URL)
+  throw new Error("NEXT_PUBLIC_SITE_URL is not set");
+
+// Remove or make conditional the verbose logging if desired
+// console.log("Environment variables checked in backend/env.ts:", { ... });

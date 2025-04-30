@@ -15,8 +15,8 @@ export async function backendFetch(
   const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888";
   const url = `${backendUrl}${path.startsWith("/") ? "" : "/"}${path}`;
 
-  // Get token from cookie (if available client-side)
-  const token = getCookie("token");
+  // Try reading the non-HttpOnly cookie
+  const token = getCookie("auth_token");
 
   const fetchOptions: RequestInit = {
     ...options,

@@ -3,11 +3,7 @@
 import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/components/ui/popover";
+import { Dialog, DialogTrigger, DialogContent } from "@/components/ui/dialog";
 import {
   Command,
   CommandInput,
@@ -80,16 +76,16 @@ export function CommandPalette({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
         <Button
           variant="default"
           className="justify-start space-x-2 bg-blue-700 hover:bg-blue-800 dark:bg-blue-300 dark:hover:bg-blue-400"
         >
           <span>Add to collection…</span>
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[600px] p-0">
+      </DialogTrigger>
+      <DialogContent className="w-[600px] p-0">
         <Command>
           <CommandInput
             placeholder="Type to search YouTube or add from your subscriptions…"
@@ -174,8 +170,8 @@ export function CommandPalette({
             )}
           </CommandList>
         </Command>
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   );
 }
 

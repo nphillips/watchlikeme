@@ -82,12 +82,11 @@ export function CommandPalette({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="w-full justify-start space-x-2">
-          <Search className="h-4 w-4" />
-          <span>Search YouTube or subscriptions…</span>
-          <kbd className="bg-muted ml-auto rounded border px-1 font-sans text-[10px]">
-            ⌘K
-          </kbd>
+        <Button
+          variant="default"
+          className="justify-start space-x-2 bg-blue-700 hover:bg-blue-800 dark:bg-blue-300 dark:hover:bg-blue-400"
+        >
+          <span>Add to collection…</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[600px] p-0">

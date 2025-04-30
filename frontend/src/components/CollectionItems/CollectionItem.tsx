@@ -33,13 +33,13 @@ const CollectionItem = ({
   return (
     <li
       key={item.id}
-      className={`flex flex-col justify-start gap-3 rounded-md ${isRemoving ? "opacity-50" : ""}`}
+      className={`flex flex-1 flex-col gap-3 rounded-md ${isRemoving ? "opacity-50" : ""}`}
     >
       <a
         href={`https://www.youtube.com/channel/${item.channel.youtubeId}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="line-clamp-1 flex w-full flex-col items-center justify-center gap-y-2 rounded-md bg-slate-300/50 py-4 font-medium transition-all hover:bg-slate-300 dark:bg-slate-700/50 hover:dark:bg-slate-700"
+        className="line-clamp-1 flex w-full flex-1 flex-col items-center justify-center gap-y-2 rounded-md bg-slate-300/50 py-4 font-medium transition-all hover:bg-slate-300 dark:bg-slate-700/50 hover:dark:bg-slate-700"
         title={displayItem.title}
       >
         {displayItem.thumbnail ? (
@@ -53,7 +53,7 @@ const CollectionItem = ({
             No Img
           </div>
         )}
-        <span className="flex flex-1 flex-col text-center">
+        <span className="flex flex-1 flex-col justify-center text-center text-balance">
           {item.channel ? (
             <div>{displayItem.title}</div>
           ) : (

@@ -15,7 +15,9 @@ const NewColTrigger = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>Create Collection</Button>
+        <Button className="bg-blue-700 hover:bg-blue-800 dark:bg-blue-300 dark:hover:bg-blue-400">
+          Create Collection
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <NewColModal onOpenChange={setOpen} />

@@ -8,6 +8,7 @@ const fjallaOne = Fjalla_One({
   weight: "400",
   subsets: ["latin"],
   display: "swap",
+  variable: "--font-fjalla-one",
 });
 
 export const metadata: Metadata = {
@@ -21,9 +22,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      style={
+        {
+          "--font-fjalla-one": fjallaOne.style.fontFamily,
+        } as React.CSSProperties
+      }
+    >
       <head />
-      <body className={fjallaOne.className}>
+      <body>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

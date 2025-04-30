@@ -221,6 +221,7 @@ export async function POST(request: Request) {
       {
         message: "User created successfully",
         user: { id: newUser.id, email: newUser.email },
+        token: token,
       },
       { status: 201 },
     );

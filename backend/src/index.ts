@@ -47,10 +47,19 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
-// Revert to single cors middleware application
+
+// Determine allowed origin based on environment
+const allowedOrigin =
+  process.env.NODE_ENV === "production"
+    ? "https://watchlikeme-staging.netlify.app" // Your Netlify URL
+    : env.ORIGIN; // Use env.ORIGIN (localhost) for local dev
+
+console.log(`[CORS] Configuring for origin: ${allowedOrigin}`); // Add log
+
+// Use the determined origin
 app.use(
   cors({
-    origin: env.ORIGIN,
+    origin: allowedOrigin,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "Cookie"],

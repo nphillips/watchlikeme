@@ -1,6 +1,10 @@
 import express from "express";
 import passport from "passport";
-import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import {
+  Strategy as GoogleStrategy,
+  Profile,
+  VerifyCallback,
+} from "passport-google-oauth20";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import jwt from "jsonwebtoken";
@@ -50,7 +54,7 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
-  })
+  }),
 );
 
 // @ts-ignore // Keep ignore for persistent type error
@@ -66,11 +70,11 @@ app.use("/api/users", userRouter);
 passport.use(
   new GoogleStrategy(
     {
-      clientID: env.GOOGLE_CLIENT_ID,
-      clientSecret: env.GOOGLE_CLIENT_SECRET,
+      clientID: env.GOOGLE_CLIENT_ID!,
+      clientSecret: env.GOOGLE_CLIENT_SECRET!,
       callbackURL: `${env.ORIGIN}/api/auth/google/callback`,
     },
-    async (_, __, profile, done) => {
+    async (_: string, __: string, profile: Profile, done: VerifyCallback) => {
       try {
         const email = profile.emails?.[0].value;
         const googleIdFromProfile = profile.id;
@@ -80,7 +84,7 @@ passport.use(
         }
         // Keep basic logging
         console.log(
-          `[Passport Strategy] Profile received: ID=${googleIdFromProfile}, Email=${email}`
+          `[Passport Strategy] Profile received: ID=${googleIdFromProfile}, Email=${email}`,
         );
 
         // Check by Google ID
@@ -89,17 +93,17 @@ passport.use(
         });
         if (userById) {
           console.log(
-            `[Passport Strategy] Found user by Google ID: ${userById.id}`
+            `[Passport Strategy] Found user by Google ID: ${userById.id}`,
           );
           // Check if this user also has a password
           if (userById.password) {
             console.log(
-              `[Passport Strategy] User ${userById.id} found by Google ID also has password. Prompting password.`
+              `[Passport Strategy] User ${userById.id} found by Google ID also has password. Prompting password.`,
             );
             return done(null, { ...userById, promptPassword: true });
           } else {
             console.log(
-              `[Passport Strategy] User ${userById.id} found by Google ID has NO password. Proceeding with login.`
+              `[Passport Strategy] User ${userById.id} found by Google ID has NO password. Proceeding with login.`,
             );
             return done(null, userById);
           }
@@ -111,12 +115,12 @@ passport.use(
         });
         if (userByEmail) {
           console.log(
-            `[Passport Strategy] Found user by Email: ${userByEmail.id}`
+            `[Passport Strategy] Found user by Email: ${userByEmail.id}`,
           );
           // Link Google ID if missing
           if (!userByEmail.googleId) {
             console.log(
-              `[Passport Strategy] Linking Google ID ${googleIdFromProfile} to user ${userByEmail.id}`
+              `[Passport Strategy] Linking Google ID ${googleIdFromProfile} to user ${userByEmail.id}`,
             );
             try {
               userByEmail = await prisma.user.update({
@@ -126,25 +130,25 @@ passport.use(
             } catch (updateError) {
               console.error(
                 `[Passport Strategy] Error linking Google ID:`,
-                updateError
+                updateError,
               );
               // Proceed with user found by email even if linking failed
             }
           } else if (userByEmail.googleId !== googleIdFromProfile) {
             console.warn(
-              `[Passport Strategy] User ${userByEmail.id} email ${email} matched, but Google ID differs.`
+              `[Passport Strategy] User ${userByEmail.id} email ${email} matched, but Google ID differs.`,
             );
           }
 
           // Check if this user also has a password
           if (userByEmail.password) {
             console.log(
-              `[Passport Strategy] User ${userByEmail.id} found by email also has password. Prompting password.`
+              `[Passport Strategy] User ${userByEmail.id} found by email also has password. Prompting password.`,
             );
             return done(null, { ...userByEmail, promptPassword: true });
           } else {
             console.log(
-              `[Passport Strategy] User ${userByEmail.id} found by email has NO password. Proceeding with login.`
+              `[Passport Strategy] User ${userByEmail.id} found by email has NO password. Proceeding with login.`,
             );
             return done(null, userByEmail);
           }
@@ -152,7 +156,7 @@ passport.use(
 
         // New User
         console.log(
-          `[Passport Strategy] No existing user found. Returning temp user.`
+          `[Passport Strategy] No existing user found. Returning temp user.`,
         );
         const tempUser = {
           id: "temp",
@@ -166,8 +170,8 @@ passport.use(
         console.error("[Passport Strategy] Error:", error);
         return done(error as Error);
       }
-    }
-  )
+    },
+  ),
 );
 
 // Auth routes
@@ -179,14 +183,14 @@ app.get(
       "email",
       "https://www.googleapis.com/auth/youtube.readonly",
     ],
-  })
+  }),
 );
 
 // Define handler separately
 const googleCallbackHandler: RequestHandler = (req, res, next) => {
   console.log(
     "[Google Callback Handler] User object received from Passport:",
-    req.user
+    req.user,
   );
 
   // Cast needed because Passport types req.user loosely
@@ -200,7 +204,7 @@ const googleCallbackHandler: RequestHandler = (req, res, next) => {
   // Check for registration needed
   if (user.id === "temp") {
     console.log(
-      "Google auth successful, but no WLM account linked. Redirecting to registration."
+      "Google auth successful, but no WLM account linked. Redirecting to registration.",
     );
     return res.redirect("/register?fromGoogle=true");
   }
@@ -208,22 +212,22 @@ const googleCallbackHandler: RequestHandler = (req, res, next) => {
   // Check if password prompt is needed (existing user with password)
   if (user.promptPassword) {
     console.log(
-      `Google auth successful for existing WLM user ${user.id}, but password exists. Redirecting to login.`
+      `Google auth successful for existing WLM user ${user.id}, but password exists. Redirecting to login.`,
     );
     const redirectUrl = `/login?email=${encodeURIComponent(
-      user.email
+      user.email,
     )}&message=passwordRequired`;
     return res.redirect(redirectUrl);
   }
 
   // Otherwise: Existing user found, no password OR strategy decided auto-login is ok
   console.log(
-    `Google auth successful for existing WLM user: ${user.id} (${user.email}). Logging in.`
+    `Google auth successful for existing WLM user: ${user.id} (${user.email}). Logging in.`,
   );
   const token = jwt.sign(
     { sub: user.id, email: user.email, role: user.role },
     env.JWT_SECRET!,
-    { expiresIn: "7d" }
+    { expiresIn: "7d" },
   );
   res.cookie("token", token, {
     httpOnly: true,
@@ -246,7 +250,7 @@ app.get(
     session: false,
     failureRedirect: "/login?error=googleAuthFailed",
   }),
-  googleCallbackHandler // Use the typed handler
+  googleCallbackHandler, // Use the typed handler
 );
 
 // Start the server if we're not in a serverless environment

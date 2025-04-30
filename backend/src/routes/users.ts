@@ -135,7 +135,7 @@ router.post("/oauth", async (req, res) => {
         name: user.name,
         accessToken,
       },
-      env.JWT_SECRET,
+      env.JWT_SECRET!,
       { expiresIn: "7d" },
     );
 

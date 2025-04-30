@@ -27,13 +27,21 @@ function createOAuth2Client(tokens: any): OAuth2Client {
   const client = new google.auth.OAuth2(
     env.GOOGLE_CLIENT_ID,
     env.GOOGLE_CLIENT_SECRET,
-    `${env.ORIGIN}/api/auth/google/callback` // Use origin from env
+    `${env.ORIGIN}/api/auth/google/callback`, // Use origin from env
   );
   client.setCredentials(tokens);
   return client;
 }
 
 export const authenticateToken: RequestHandler = async (req, res, next) => {
+  // ---> New Log: Log all incoming cookies
+  console.log("[Auth Middleware] Incoming Cookies:", req.cookies);
+  // ---> New Log: Log Authorization header
+  console.log(
+    "[Auth Middleware] Authorization Header:",
+    req.headers["authorization"],
+  );
+
   // 1. Find WLM token (JWT)
   let token = req.cookies?.token;
   let tokenSource = "cookie";
@@ -47,12 +55,19 @@ export const authenticateToken: RequestHandler = async (req, res, next) => {
       tokenSource = "header";
     }
   }
+
+  // ---> New Log: Log the found token (or lack thereof)
+  console.log(
+    `[Auth Middleware] Token found via ${tokenSource}? : ${token ? "Yes (length: " + token.length + ")" : "No"}`,
+  );
+
   console.log("[Auth Middleware] Starting WLM JWT check:", {
     tokenSource: token ? tokenSource : "none",
     hasToken: !!token,
   });
+
   if (!token) {
-    console.error("[Auth Middleware] No WLM token found.");
+    console.error("[Auth Middleware] No WLM token found. Denying access."); // Added detail
     return res.status(401).json({ error: "No authentication token provided" });
   }
 
@@ -98,13 +113,13 @@ export const authenticateToken: RequestHandler = async (req, res, next) => {
           authInfo.oauth2Client = oauth2Client;
         } else {
           console.warn(
-            "[Auth Middleware] google_tokens cookie present but missing access_token."
+            "[Auth Middleware] google_tokens cookie present but missing access_token.",
           );
         }
       } catch (e) {
         console.error(
           "[Auth Middleware] Error parsing google_tokens cookie:",
-          e
+          e,
         );
         // Don't fail the request here, just proceed without Google auth info
       }

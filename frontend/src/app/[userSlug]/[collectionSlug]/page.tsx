@@ -104,6 +104,22 @@ export default function CollectionPage() {
     return idSet;
   }, [items]);
 
+  const existingItemYoutubeIdToCollectionItemId = useMemo(() => {
+    const map = new Map<string, string>();
+    items.forEach((item) => {
+      if (item.channel?.youtubeId && item.id) {
+        map.set(item.channel.youtubeId, item.id);
+      } else if (item.video?.youtubeId && item.id) {
+        map.set(item.video.youtubeId, item.id);
+      }
+    });
+    console.log(
+      "[CollectionPage] Recalculated existingItemYoutubeIdToCollectionItemId:",
+      map,
+    );
+    return map;
+  }, [items]);
+
   const [isEditing, setIsEditing] = useState(false);
   const [editableNote, setEditableNote] = useState<string>("");
   const [editableIsPublic, setEditableIsPublic] = useState<boolean>(true);
@@ -211,6 +227,19 @@ export default function CollectionPage() {
       setTimeout(() => setRemoveError(null), 5000);
     } finally {
       setRemovingItemId(null);
+    }
+  };
+
+  const handleRemoveItemFromPalette = (youtubeId: string) => {
+    const collectionItemId =
+      existingItemYoutubeIdToCollectionItemId.get(youtubeId);
+    if (collectionItemId) {
+      handleRemoveItem(collectionItemId);
+    } else {
+      console.warn(
+        `Attempted to remove item with youtubeId ${youtubeId} from palette, but it wasn't found in the map.`,
+      );
+      // Optionally show an error to the user
     }
   };
 
@@ -483,10 +512,11 @@ export default function CollectionPage() {
 
             <div className="col-span-4">
               {isOwner && (
-                <div>
+                <div className="mb-6">
                   <CommandPalette
                     onAddItem={handleAddItem}
-                    existingItemYoutubeIds={existingItemYoutubeIds}
+                    onRemoveItem={handleRemoveItemFromPalette}
+                    existingItemsMap={existingItemYoutubeIdToCollectionItemId}
                   />
                   {isAdding && (
                     <p className="mt-2 text-sm text-blue-500">Adding item...</p>
@@ -504,7 +534,6 @@ export default function CollectionPage() {
                 </div>
               )}
 
-              <h2 className="my-4 text-lg font-bold">Items in Collection</h2>
               <CollectionItems
                 items={items}
                 isLoading={itemsLoading}

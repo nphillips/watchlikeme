@@ -22,7 +22,7 @@ export function CpItem({
   return (
     <div
       className={cn(
-        "flex justify-between gap-2 rounded-md border border-gray-200 px-4",
+        "flex w-full justify-between gap-2 rounded-md border-gray-200 px-4",
       )}
     >
       <div className="flex flex-1 items-center gap-3">

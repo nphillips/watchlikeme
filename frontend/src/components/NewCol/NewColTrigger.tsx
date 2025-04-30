@@ -15,7 +15,7 @@ const NewColTrigger = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-blue-700 hover:bg-blue-800 dark:bg-blue-300 dark:hover:bg-blue-400">
+        <Button variant="outline" className="bg-white">
           Create Collection
         </Button>
       </DialogTrigger>

@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogTrigger, DialogContent } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Command,
   CommandInput,
@@ -25,7 +31,8 @@ interface Channel {
 
 interface CommandPaletteProps {
   onAddItem: (item: any) => void;
-  existingItemYoutubeIds?: Set<string> | null;
+  onRemoveItem: (youtubeId: string) => void;
+  existingItemsMap?: Map<string, string> | null;
 }
 
 const fetcher = async (url: string) => {
@@ -39,7 +46,8 @@ const fetcher = async (url: string) => {
 
 export function CommandPalette({
   onAddItem,
-  existingItemYoutubeIds,
+  onRemoveItem,
+  existingItemsMap,
 }: CommandPaletteProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -75,17 +83,21 @@ export function CommandPalette({
     onAddItem(item);
   };
 
+  const removeItem = (youtubeId: string) => {
+    onRemoveItem(youtubeId);
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant="default"
-          className="justify-start space-x-2 bg-blue-700 hover:bg-blue-800 dark:bg-blue-300 dark:hover:bg-blue-400"
-        >
+        <Button variant="outline" className="bg-white">
           <span>Add to collection…</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="w-[600px] p-0">
+      <DialogContent className="w-[600px] p-0 [&>button]:mt-[-.4rem]">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Add to Collection</DialogTitle>
+        </DialogHeader>
         <Command>
           <CommandInput
             placeholder="Type to search YouTube or add from your subscriptions…"
@@ -99,9 +111,10 @@ export function CommandPalette({
             {query === "" && (
               <CommandGroup heading="Your Subscriptions">
                 {subs?.slice(0, 10).map((ch) => {
-                  const isAdded = existingItemYoutubeIds?.has(ch.id) ?? false;
+                  const youtubeId = ch.id;
+                  const isAdded = existingItemsMap?.has(youtubeId) ?? false;
                   return (
-                    <CommandItem key={ch.id}>
+                    <CommandItem key={youtubeId}>
                       <CpItem
                         id={ch.id}
                         title={ch.title}
@@ -109,14 +122,26 @@ export function CommandPalette({
                         subscriberCount={ch.subscriberCount}
                         isAdded={isAdded}
                       >
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => addItem(ch)}
-                          disabled={isAdded}
-                        >
-                          {isAdded ? "Added" : "+Add"}
-                        </Button>
+                        {isAdded ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="w-20 border border-slate-300 text-sm dark:border-slate-600"
+                            onClick={() => removeItem(youtubeId)}
+                          >
+                            Remove
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="w-20 border border-slate-300 text-sm dark:border-slate-600"
+                            onClick={() => addItem(ch)}
+                            disabled={isAdded}
+                          >
+                            +Add
+                          </Button>
+                        )}
                       </CpItem>
                     </CommandItem>
                   );
@@ -140,8 +165,7 @@ export function CommandPalette({
                     const title = item.snippet.title;
                     const thumbnail = item.snippet.thumbnails?.default?.url;
 
-                    const isAdded =
-                      existingItemYoutubeIds?.has(youtubeId) ?? false;
+                    const isAdded = existingItemsMap?.has(youtubeId) ?? false;
 
                     return (
                       <CommandItem key={youtubeId}>
@@ -154,14 +178,24 @@ export function CommandPalette({
                             />
                             <span className="line-clamp-1">{title}</span>
                           </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => addItem(item)}
-                            disabled={isAdded}
-                          >
-                            {isAdded ? "Added" : "+Add"}
-                          </Button>
+                          {isAdded ? (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => removeItem(youtubeId)}
+                            >
+                              Remove
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => addItem(item)}
+                              disabled={isAdded}
+                            >
+                              +Add
+                            </Button>
+                          )}
                         </div>
                       </CommandItem>
                     );

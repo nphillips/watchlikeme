@@ -14,6 +14,16 @@ const oauth2Client = new OAuth2Client(
 );
 
 export async function GET(request: Request) {
+  // Define baseUrl and redirectTo at the top level of the GET handler
+  const baseUrl = env.ORIGIN || "http://localhost:3000";
+  const backendUrl = env.BACKEND_URL || "http://localhost:8888";
+
+  const redirectTo = (path: string) => {
+    const fullUrl = new URL(path, baseUrl);
+    console.log("Redirecting to:", fullUrl.toString());
+    return NextResponse.redirect(fullUrl);
+  };
+
   try {
     const url = new URL(request.url);
 
@@ -29,15 +39,6 @@ export async function GET(request: Request) {
         env.ORIGIN || "http://localhost:3000"
       }/api/auth/google/callback`,
     });
-
-    const baseUrl = env.ORIGIN || "http://localhost:3000";
-    const backendUrl = env.BACKEND_URL || "http://localhost:8888";
-
-    const redirectTo = (path: string) => {
-      const fullUrl = new URL(path, baseUrl);
-      console.log("Redirecting to:", fullUrl.toString());
-      return NextResponse.redirect(fullUrl);
-    };
 
     const isLinkingAccount = state === "link_account";
 
@@ -210,6 +211,7 @@ export async function GET(request: Request) {
     }
   } catch (error) {
     console.error("Callback error:", error);
+    // Now redirectTo is accessible here
     return redirectTo(`/?error=${encodeURIComponent("authentication_failed")}`);
   }
 }

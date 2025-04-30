@@ -1,7 +1,6 @@
-import { config } from "dotenv";
-import { join } from "path";
-
-config({ path: join(process.cwd(), "..", ".env") });
+// import { config } from "dotenv";
+// import { join } from "path";
+// config({ path: join(process.cwd(), "..", ".env") });
 
 export const env = {
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
@@ -10,6 +9,7 @@ export const env = {
   NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
   JWT_SECRET: process.env.JWT_SECRET,
   BACKEND_URL: process.env.BACKEND_URL,
+  YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
 } as const;
 
 if (!env.GOOGLE_CLIENT_ID) {

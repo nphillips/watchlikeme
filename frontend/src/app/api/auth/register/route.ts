@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
 import { env } from "@/env";

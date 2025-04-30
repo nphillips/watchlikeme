@@ -18,7 +18,6 @@ import {
   CommandGroup,
   CommandItem,
 } from "@/components/ui/command";
-import { Search } from "lucide-react";
 import { CpItem } from "./CpItem";
 import { YouTubeThumbnail } from "@/components/YouTubeThumbnail";
 

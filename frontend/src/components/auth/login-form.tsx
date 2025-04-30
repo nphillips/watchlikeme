@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
+import Link from "next/link";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -21,8 +22,6 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [googleAuthRequired, setGoogleAuthRequired] = useState(false);
-  const [emailForGoogle, setEmailForGoogle] = useState<string | null>(null);
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -34,7 +33,6 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -43,8 +41,6 @@ export function LoginForm() {
       password: "",
     },
   });
-
-  const currentEmail = watch("email");
 
   const onSubmit = async (data: LoginFormValues) => {
     try {
@@ -62,7 +58,6 @@ export function LoginForm() {
       if (!response.ok) {
         if (responseData.authMethod === "google") {
           setGoogleAuthRequired(true);
-          setEmailForGoogle(data.email);
           setError(
             "This account uses Google authentication. Please sign in with Google.",
           );
@@ -170,13 +165,13 @@ export function LoginForm() {
 
         <div className="mt-4 text-center">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Don't have an account?{" "}
-            <a
+            Don&apos;t have an account?{" "}
+            <Link
               href="/register"
               className="text-blue-500 hover:text-blue-700 dark:text-blue-400"
             >
               Register
-            </a>
+            </Link>
           </p>
         </div>
 
@@ -191,7 +186,7 @@ export function LoginForm() {
           </div>
         </div>
 
-        <a
+        <Link
           href="/api/auth/google"
           className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
         >
@@ -219,7 +214,7 @@ export function LoginForm() {
             />
           </svg>
           Sign in with Google
-        </a>
+        </Link>
       </form>
     </div>
   );

@@ -7,7 +7,7 @@ import LeftNavOverlay from "@/components/LeftNav/LeftNavOverlay";
 import LeftNav from "@/components/LeftNav/LeftNav";
 import { useAuth } from "@/hooks/useAuth";
 import { getCollections } from "@/lib/api/collections";
-import { Collection, UserCollectionsResponse } from "@/interfaces/index";
+import { UserCollectionsResponse } from "@/interfaces/index";
 import { CollectionsContext } from "@/context/CollectionsContext";
 import { cn } from "@/lib/utils";
 import useSWR from "swr";

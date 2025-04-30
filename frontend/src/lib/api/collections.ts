@@ -54,8 +54,10 @@ export async function createCollection(
           console.log("[API Client] No error body returned.");
         }
       }
-    } catch (e) {
-      console.error("[API Client] Failed to parse/read error response body", e);
+    } catch /* e */ {
+      // If parsing error response fails, ignore the parsing error itself,
+      // just throw the original status text error.
+      console.error("[API Client] Failed to parse/read error response body");
     }
     throw new Error(`${errorBody} (Status: ${response.status})`);
   }
@@ -76,7 +78,7 @@ export async function getCollections(): Promise<UserCollectionsResponse> {
       const body = await response.json();
       errorBody = body.error || body.message || errorBody;
       console.error("[API Client] Error response body:", body);
-    } catch (e) {
+    } catch /* e */ {
       console.error("[API Client] Failed to parse error response body");
     }
     throw new Error(`${errorBody} (Status: ${response.status})`);
@@ -105,7 +107,7 @@ export async function getCollectionItems(
       const body = await response.json();
       errorBody = body.error || body.message || errorBody;
       console.error("[API Client] Error response body:", body);
-    } catch (e) {
+    } catch /* e */ {
       console.error("[API Client] Failed to parse error response body");
     }
     if (response.status === 404) {
@@ -159,8 +161,10 @@ export async function addCollectionItem(
           console.log("[API Client] No error body returned.");
         }
       }
-    } catch (e) {
-      console.error("[API Client] Failed to parse/read error response body", e);
+    } catch /* e */ {
+      // If parsing error response fails, ignore the parsing error itself,
+      // just throw the original status text error.
+      console.error("[API Client] Failed to parse/read error response body");
     }
     throw new Error(`${errorBody} (Status: ${response.status})`);
   }
@@ -204,8 +208,8 @@ export async function removeCollectionItem(
         console.log("[API Client] No error body returned.");
       }
     }
-  } catch (e) {
-    console.error("[API Client] Failed to parse/read error response body", e);
+  } catch /* e */ {
+    console.error("[API Client] Failed to parse/read error response body");
   }
   throw new Error(`${errorBody} (Status: ${response.status})`);
 }
@@ -255,8 +259,10 @@ export async function updateCollectionDetails(
           console.log("[API Client] No error body returned.");
         }
       }
-    } catch (e) {
-      console.error("[API Client] Failed to parse/read error response body", e);
+    } catch /* e */ {
+      // If parsing error response fails, ignore the parsing error itself,
+      // just throw the original status text error.
+      console.error("[API Client] Failed to parse/read error response body");
     }
     throw new Error(`${errorBody} (Status: ${response.status})`);
   }
@@ -299,7 +305,7 @@ export async function likeCollection(collectionSlug: string): Promise<void> {
         errorBody = textBody;
       }
     }
-  } catch (e) {
+  } catch /* e */ {
     /* Ignore parsing error */
   }
   throw new Error(`${errorBody} (Status: ${response.status})`);
@@ -335,7 +341,7 @@ export async function unlikeCollection(collectionSlug: string): Promise<void> {
         errorBody = textBody;
       }
     }
-  } catch (e) {
+  } catch /* e */ {
     /* Ignore parsing error */
   }
   throw new Error(`${errorBody} (Status: ${response.status})`);
@@ -375,7 +381,7 @@ export async function grantCollectionAccess(
         errorBody = textBody;
       }
     }
-  } catch (e) {
+  } catch /* e */ {
     /* Ignore parsing error */
   }
   throw new Error(`${errorBody} (Status: ${response.status})`);

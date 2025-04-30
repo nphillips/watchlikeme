@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 
 export function useAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -10,7 +9,6 @@ export function useAuth() {
     hasGoogleAuth: boolean;
   } | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
 
   const checkAuth = useCallback(async () => {
     console.log("[useAuth] Running checkAuth...");

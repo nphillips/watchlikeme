@@ -4,7 +4,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCollections } from "@/context/CollectionsContext";
 import CollectionsList from "@/components/CollectionsList";
 import MarqueeGrid from "@/components/MarqueeGrid";
-import { NewColTrigger } from "@/components/NewCol";
 
 export default function Home() {
   const { user, loading: authLoading, handleLinkGoogle } = useAuth();
@@ -94,8 +93,8 @@ export default function Home() {
                 Discover, curate, and celebrate your YouTube channels.
               </div>
               <div className="text-clamp-h3 mt-[1em] max-w-[20em] text-center font-medium text-balance">
-                YouTube channels are hidden gems—let’s give them the spotlight
-                they deserve.
+                YouTube channels are hidden gems—let&apos;s give them the
+                spotlight they deserve.
               </div>
             </div>
           </div>

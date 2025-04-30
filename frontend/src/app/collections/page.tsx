@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { getCollections } from "@/lib/api/collections";
-import { UserCollectionsResponse, Collection } from "@/interfaces/index";
+import { Collection } from "@/interfaces/index";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -88,7 +88,7 @@ export default function CollectionsPage() {
                 <h2 className="mb-2 text-xl font-semibold">My Collections</h2>
                 {ownedCollections.length === 0 ? (
                   <p className="text-gray-500">
-                    You haven't created any collections yet.
+                    You haven&apos;t created any collections yet.
                   </p>
                 ) : (
                   <ul className="space-y-1">

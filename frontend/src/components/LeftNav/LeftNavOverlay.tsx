@@ -6,8 +6,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Button } from "../ui/button";
-import { Menu } from "lucide-react";
 import { Collection } from "@/interfaces/index";
 
 interface LeftNavOverlayProps {

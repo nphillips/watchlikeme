@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
+import Link from "next/link";
 
 const registerSchema = z
   .object({
@@ -33,7 +33,6 @@ export function RegisterForm({
   googleName?: string;
 }) {
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
 
   const defaultValues = {
     email: googleEmail || "",
@@ -150,12 +149,12 @@ export function RegisterForm({
           <div className="mt-4 text-center">
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Already have an account?{" "}
-              <a
+              <Link
                 href="/login"
                 className="text-blue-500 hover:text-blue-700 dark:text-blue-400"
               >
                 Log in
-              </a>
+              </Link>
             </p>
           </div>
         )}

@@ -12,13 +12,7 @@ interface CpItemProps {
   isAdded?: boolean;
 }
 
-export function CpItem({
-  id,
-  title,
-  thumbnailUrl,
-  children,
-  isAdded,
-}: CpItemProps) {
+export function CpItem({ title, thumbnailUrl, children }: CpItemProps) {
   return (
     <div
       className={cn(

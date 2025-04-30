@@ -7,11 +7,14 @@ if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
   console.error("Missing required environment variables for Google OAuth");
 }
 
+// Remove unused oauth2Client definition here if not used later
+/*
 const oauth2Client = new OAuth2Client(
   env.GOOGLE_CLIENT_ID,
   env.GOOGLE_CLIENT_SECRET,
   `${env.ORIGIN || "http://localhost:3000"}/api/auth/google/callback`,
 );
+*/
 
 export async function GET(request: Request) {
   // Define baseUrl and redirectTo at the top level of the GET handler
@@ -85,7 +88,9 @@ export async function GET(request: Request) {
         throw new Error("No payload received from Google");
       }
 
-      const { sub: googleId, email, name, picture } = payload;
+      // Remove unused 'name' and 'picture' from destructuring
+      // const { sub: googleId, email, name, picture } = payload;
+      const { sub: googleId, email } = payload;
 
       if (isLinkingAccount) {
         const cookieStore = await cookies();

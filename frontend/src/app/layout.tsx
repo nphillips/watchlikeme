@@ -1,14 +1,8 @@
 import type { Metadata } from "next";
-import { Fjalla_One } from "next/font/google";
+// import { Fjalla_One } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import AppLayout from "@/components/AppLayout/AppLayout";
-
-const fjallaOne = Fjalla_One({
-  weight: "400",
-  subsets: ["latin"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "WatchLikeMe",

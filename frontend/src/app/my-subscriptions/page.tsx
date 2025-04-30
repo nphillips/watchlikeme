@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { YouTubeSubscriptions } from "@/components/youtube-subscriptions";
 import { CommandPalette } from "@/components/CommandPalette";
+import Link from "next/link";
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -97,7 +98,7 @@ export default function Home() {
   return (
     <div className="min-h-screen p-4">
       <h1 className="mb-4 text-2xl font-bold">WatchLikeMe</h1>
-      <CommandPalette onAddItem={() => {}} />
+      <CommandPalette onAddItem={() => {}} onRemoveItem={() => {}} />
       <div>
         {isAuthenticated ? (
           <div className="space-y-4">
@@ -151,18 +152,18 @@ export default function Home() {
           </div>
         ) : (
           <div className="flex gap-4">
-            <a
+            <Link
               href="/login"
               className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium whitespace-nowrap text-white shadow-sm hover:bg-blue-700"
             >
               Log in
-            </a>
-            <a
+            </Link>
+            <Link
               href="/register"
               className="inline-flex items-center justify-center rounded-md border border-blue-600 px-4 py-2 text-sm font-medium whitespace-nowrap text-blue-600 shadow-sm hover:bg-blue-50"
             >
               Register
-            </a>
+            </Link>
           </div>
         )}
       </div>

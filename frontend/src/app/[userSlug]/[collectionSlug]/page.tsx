@@ -19,8 +19,8 @@ import {
 } from "@/interfaces";
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
-import useSWR, { mutate } from "swr";
-import { X, Heart, Share2, HeartIcon } from "lucide-react";
+import useSWR from "swr";
+import { Heart, Share2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -37,8 +37,7 @@ import { cn } from "@/lib/utils";
 import CollectionItems from "@/components/CollectionItems/CollectionItems";
 import { HeartFilledIcon } from "@radix-ui/react-icons";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
-
+// Re-add PaletteItem interface definition
 interface PaletteItem {
   id: string | { videoId?: string; channelId?: string };
   title?: string;
@@ -65,7 +64,6 @@ export default function CollectionPage() {
     data,
     error: itemsError,
     isLoading: itemsLoading,
-    mutate: mutateItems,
   } = useSWR<CollectionWithItems>(
     swrKey,
     () => {
@@ -90,19 +88,6 @@ export default function CollectionPage() {
   const [addError, setAddError] = useState<string | null>(null);
   const [removingItemId, setRemovingItemId] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
-
-  const existingItemYoutubeIds = useMemo(() => {
-    const idSet = new Set<string>();
-    items.forEach((item) => {
-      if (item.channel?.youtubeId) {
-        idSet.add(item.channel.youtubeId);
-      } else if (item.video?.youtubeId) {
-        idSet.add(item.video.youtubeId);
-      }
-    });
-    console.log("[CollectionPage] Recalculated existingItemYoutubeIds:", idSet);
-    return idSet;
-  }, [items]);
 
   const existingItemYoutubeIdToCollectionItemId = useMemo(() => {
     const map = new Map<string, string>();
@@ -197,7 +182,6 @@ export default function CollectionPage() {
       console.log("Attempting to add item:", requestBody);
       await addCollectionItem(collectionSlug, requestBody);
       console.log("Item added successfully, revalidating list...");
-      mutateItems();
     } catch (err) {
       console.error("Error adding collection item:", err);
       if (err instanceof Error && err.message.includes("Item already exists")) {
@@ -218,7 +202,6 @@ export default function CollectionPage() {
     try {
       await removeCollectionItem(collectionSlug, collectionItemId);
       console.log(`Item ${collectionItemId} removed, revalidating list...`);
-      mutateItems();
     } catch (err) {
       console.error(`Error removing item ${collectionItemId}:`, err);
       setRemoveError(
@@ -264,8 +247,6 @@ export default function CollectionPage() {
     try {
       await updateCollectionDetails(collectionSlug, updates);
       console.log("Collection details updated successfully, revalidating...");
-      mutateItems();
-      setIsEditing(false);
     } catch (err) {
       console.error("Error updating collection details:", err);
       setSaveError(
@@ -304,7 +285,6 @@ export default function CollectionPage() {
       : undefined;
 
     if (optimisticData) {
-      mutateItems(optimisticData, false);
     }
 
     try {
@@ -314,13 +294,11 @@ export default function CollectionPage() {
         await likeCollection(collectionSlug);
       }
       console.log("Like/Unlike successful");
-      mutateItems();
     } catch (err) {
       console.error("Error liking/unliking collection:", err);
       setLikeError(
         err instanceof Error ? err.message : "Failed to update like status",
       );
-      mutateItems(data, false);
       setTimeout(() => setLikeError(null), 5000);
     } finally {
       setIsLiking(false);
@@ -346,8 +324,6 @@ export default function CollectionPage() {
       );
       setGrantAccessSuccess(true);
       setTargetUsername("");
-
-      mutateItems();
 
       setTimeout(() => {
         setIsSharing(false);

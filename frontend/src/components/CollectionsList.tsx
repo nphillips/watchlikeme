@@ -46,7 +46,7 @@ const CollectionsList = ({
         </div>
         {ownedCollections.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            You haven't created any collections yet.
+            You haven&apos;t created any collections yet.
           </p>
         ) : (
           <ul className="space-y-1">

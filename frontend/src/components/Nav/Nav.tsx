@@ -1,5 +1,4 @@
 import { Button } from "../ui/button";
-import { useRouter } from "next/navigation";
 import { removeCookie } from "@/lib/cookies";
 import Link from "next/link";
 import { ModeToggle } from "../mode-toggle";
@@ -29,7 +28,6 @@ const Nav = ({
   user,
   handleLinkGoogle,
 }: NavProps) => {
-  const router = useRouter();
   const pathname = usePathname();
 
   console.log("[Nav] Rendering - Pathname:", pathname);

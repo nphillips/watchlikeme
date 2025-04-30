@@ -145,7 +145,7 @@ export async function POST(request: Request) {
             response.cookies.set("token", token, {
               httpOnly: true,
               secure: process.env.NODE_ENV === "production",
-              sameSite: "lax",
+              sameSite: "none",
               path: "/",
             });
             console.log(
@@ -228,14 +228,14 @@ export async function POST(request: Request) {
     response.cookies.set("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "none",
       path: "/",
       maxAge: 7 * 24 * 60 * 60,
     });
     response.cookies.set("auth_token", token, {
       httpOnly: false,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "none",
       path: "/",
       maxAge: 7 * 24 * 60 * 60,
     });

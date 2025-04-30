@@ -5,8 +5,9 @@ import jwt from "jsonwebtoken";
 import { env } from "../env";
 import { authenticateToken } from "../middleware/auth";
 import { getGoogleTokensForUser } from "../lib/google";
+import { prisma } from "../lib/prisma";
+import { verifyToken } from "./auth";
 
-const prisma = new PrismaClient();
 const router = Router(); // Use single router
 
 // === Authenticated /me Routes ===
@@ -62,26 +63,26 @@ router.delete("/me/google-tokens", authenticateToken, async (req, res) => {
   }
   try {
     console.log(`[Delete Tokens] Attempting delete for user: ${authInfo.id}`);
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const deleteResult = await tx.googleToken.deleteMany({
         where: { userId: authInfo.id },
       });
       console.log(
-        `[Delete Tokens] GoogleToken delete result count: ${deleteResult.count}`
+        `[Delete Tokens] GoogleToken delete result count: ${deleteResult.count}`,
       );
       await tx.user.update({
         where: { id: authInfo.id },
         data: { googleId: null },
       });
       console.log(
-        `[Delete Tokens] Set User.googleId to null for user: ${authInfo.id}`
+        `[Delete Tokens] Set User.googleId to null for user: ${authInfo.id}`,
       );
     });
     res.status(204).send();
   } catch (error) {
     console.error(
       `[Delete Tokens] Error unlinking Google account for user ${authInfo.id}:`,
-      error
+      error,
     );
     res.status(500).json({ error: "Failed to unlink Google account" });
   }
@@ -135,7 +136,7 @@ router.post("/oauth", async (req, res) => {
         accessToken,
       },
       env.JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
 
     return res.json({ token, user });
@@ -219,36 +220,46 @@ router.post("/check-google", async (req, res) => {
   }
 });
 
-router.patch("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { username, password, googleId, name, image } = req.body;
+router.patch("/:id", verifyToken, async (req, res) => {
+  const { id } = req.params;
+  const { username, password } = req.body;
 
-    const updateData: any = {};
-    if (username) updateData.username = username;
+  // Ensure user is updating their own profile (or is admin - future)
+  if (req.authPayload?.id !== id) {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+
+  try {
+    const updateData: { username?: string; password?: string } = {};
+    if (username) {
+      updateData.username = username;
+    }
     if (password) {
-      // Hash new password if provided
       updateData.password = await bcrypt.hash(password, 10);
     }
-    if (googleId) updateData.googleId = googleId;
-    if (name) updateData.name = name;
-    if (image) updateData.image = image;
 
-    const updatedUser = await prisma.user.update({
-      where: { id },
-      data: updateData,
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        googleId: true,
-        name: true,
-        image: true,
-        role: true,
-      },
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: "No update data provided" });
+    }
+
+    // Re-apply type for 'tx'
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const updatedUser = await tx.user.update({
+        where: { id },
+        data: updateData,
+        select: {
+          id: true,
+          email: true,
+          username: true,
+          googleId: true,
+          name: true,
+          image: true,
+          role: true,
+        },
+      });
+
+      return res.json(updatedUser);
     });
-
-    return res.json(updatedUser);
   } catch (error) {
     console.error("Error updating user:", error);
     if ((error as any).code === "P2025") {

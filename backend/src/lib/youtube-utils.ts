@@ -1,5 +1,6 @@
 import { youtube, setUserCredentials } from "./youtube";
 import { prisma } from "./prisma";
+import { Channel } from "@prisma/client";
 
 /**
  * Fetch channel details including subscriber count
@@ -92,7 +93,9 @@ export async function refreshStaleChannelThumbnails(
   if (!channels.length) return { updated: 0 };
 
   // Get fresh data from YouTube API
-  const staleChannelIds = channels.map((c) => c.youtubeId);
+  const staleChannelIds = channels.map(
+    (c: { youtubeId: string }) => c.youtubeId,
+  );
   const channelDetails = await fetchChannelDetails(
     staleChannelIds,
     accessToken,
@@ -140,7 +143,7 @@ export async function updateSubscriptionDetails(
     }
 
     // Get YouTube IDs for API call
-    const channelIds = user.subscriptions.map((sub) => sub.youtubeId);
+    const channelIds = user.subscriptions.map((sub: Channel) => sub.youtubeId);
 
     // Fetch latest details from YouTube API
     const channelDetails = await fetchChannelDetails(channelIds, accessToken);

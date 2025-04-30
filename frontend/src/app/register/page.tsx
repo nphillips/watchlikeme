@@ -1,46 +1,11 @@
 "use client";
 
-import { RegisterForm } from "@/components/auth/register-form";
+// import { RegisterForm } from "@/components/auth/register-form";
 import Nav from "@/components/Nav";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense } from "react";
+import { RegisterPageContent } from "./RegisterPageContent";
 
 export default function RegisterPage() {
-  const searchParams = useSearchParams();
-  const [googleData, setGoogleData] = useState<{
-    email?: string;
-    name?: string;
-  }>({});
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    if (!searchParams) return;
-
-    const fromGoogle = searchParams.get("fromGoogle");
-
-    if (fromGoogle === "true") {
-      setIsLoading(true);
-      fetch("/api/auth/google/profile")
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.error) {
-            throw new Error(data.error);
-          }
-          setGoogleData({
-            email: data.email,
-            name: data.name,
-          });
-        })
-        .catch((error) => {
-          console.error("Error fetching Google profile:", error);
-          window.location.href = "/register";
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-    }
-  }, [searchParams]);
-
   return (
     <div className="flex min-h-screen flex-col">
       <Nav
@@ -51,23 +16,15 @@ export default function RegisterPage() {
       />
       <div className="flex flex-1 flex-col items-center py-10">
         <h1 className="mb-6 text-center text-2xl font-bold">Register</h1>
-        {isLoading ? (
-          <div className="flex justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-blue-500"></div>
-          </div>
-        ) : (
-          <>
-            {googleData.email && (
-              <p className="mb-4 text-center text-gray-600">
-                Complete your registration using your Google account
-              </p>
-            )}
-            <RegisterForm
-              googleEmail={googleData.email}
-              googleName={googleData.name}
-            />
-          </>
-        )}
+        <Suspense
+          fallback={
+            <div className="flex justify-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          }
+        >
+          <RegisterPageContent />
+        </Suspense>
       </div>
     </div>
   );

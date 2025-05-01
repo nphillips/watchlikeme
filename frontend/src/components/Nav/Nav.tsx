@@ -84,7 +84,7 @@ const Nav = ({
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="hidden md:block">
-                      {user ? `${user.email}` : "Signed in"}
+                      <b>{user ? `${user.username}` : "Signed in"}</b>
                     </div>
                     <div className="flex gap-2">
                       {user && !user.hasGoogleAuth && (

@@ -150,6 +150,35 @@ export function CommandPalette({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  useEffect(() => {
+    if (query === "" && channels.length > 0) {
+      const ids = channels.map((ch) => ch.id);
+      const duplicateIds = ids.filter((id, index) => ids.indexOf(id) !== index);
+      if (duplicateIds.length > 0) {
+        console.warn(
+          "[CommandPalette] Duplicate IDs found in subscriptions list:",
+          duplicateIds,
+          ids,
+        );
+      } else {
+        // console.log("[CommandPalette] Subscription IDs:", ids);
+      }
+    }
+    if (query.length > 0 && ytResults.length > 0) {
+      const ids = ytResults.map((item) => item.id.videoId || item.id.channelId);
+      const duplicateIds = ids.filter((id, index) => ids.indexOf(id) !== index);
+      if (duplicateIds.length > 0) {
+        console.warn(
+          "[CommandPalette] Duplicate IDs found in search results:",
+          duplicateIds,
+          ids,
+        );
+      } else {
+        // console.log("[CommandPalette] Search Result IDs:", ids);
+      }
+    }
+  }, [channels, ytResults, query]);
+
   const addItem = (item: any) => {
     onAddItem(item);
   };

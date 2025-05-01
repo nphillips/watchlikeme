@@ -81,7 +81,7 @@ const NewColModal = ({ onOpenChange }: NewColModalProps) => {
             id="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="col-span-3"
+            className="col-span-3 bg-white"
             required
             disabled={isLoading}
           />
@@ -93,7 +93,7 @@ const NewColModal = ({ onOpenChange }: NewColModalProps) => {
           <Input
             id="slug"
             value={slug}
-            className="bg-muted col-span-3"
+            className="col-span-3 bg-white"
             readOnly
             disabled
             aria-describedby={

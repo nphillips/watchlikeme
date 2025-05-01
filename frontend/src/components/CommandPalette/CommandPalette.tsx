@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import useSWRInfinite from "swr/infinite";
 import useSWR from "swr";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,12 +21,18 @@ import {
 } from "@/components/ui/command";
 import { CpItem } from "./CpItem";
 import { YouTubeThumbnail } from "@/components/YouTubeThumbnail";
+import { Loader2 } from "lucide-react";
 
 interface Channel {
   id: string;
   title: string;
   thumbnailUrl: string;
   subscriberCount: number;
+}
+
+interface SubscriptionPage {
+  items: Channel[];
+  nextPageToken: string | null;
 }
 
 interface CommandPaletteProps {
@@ -38,10 +45,18 @@ const fetcher = async (url: string) => {
   const res = await fetch(url);
   if (!res.ok) {
     const errorText = await res.text();
+    console.error(`[Fetcher] Error fetching ${url}: ${errorText}`);
     throw new Error(errorText || `Fetch error: ${res.status}`);
   }
-  return res.json();
+  try {
+    return await res.json();
+  } catch (e) {
+    console.error(`[Fetcher] Error parsing JSON from ${url}:`, e);
+    throw new Error(`Invalid JSON response from ${url}`);
+  }
 };
+
+const SUBS_PAGE_LIMIT = 15;
 
 export function CommandPalette({
   onAddItem,
@@ -50,10 +65,41 @@ export function CommandPalette({
 }: CommandPaletteProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
+  const observerTargetRef = useRef<HTMLDivElement>(null);
 
-  const { data: subs } = useSWR<Channel[]>(
-    () => (open && query === "" ? "/api/channels" : null),
-    fetcher,
+  const getKey = (
+    pageIndex: number,
+    previousPageData: SubscriptionPage | null,
+  ) => {
+    if (!open || query !== "") return null;
+
+    if (pageIndex === 0) return `/api/channels?limit=${SUBS_PAGE_LIMIT}`;
+
+    if (!previousPageData) return null;
+
+    if (!previousPageData.nextPageToken) return null;
+
+    return `/api/channels?limit=${SUBS_PAGE_LIMIT}&pageToken=${previousPageData.nextPageToken}`;
+  };
+
+  const {
+    data: subsPages,
+    error: subsError,
+    size,
+    setSize,
+    isValidating: subsLoadingNextPage,
+    isLoading: subsLoadingInitial,
+  } = useSWRInfinite<SubscriptionPage>(getKey, fetcher, {
+    revalidateFirstPage: false,
+  });
+
+  const channels: Channel[] = subsPages
+    ? subsPages.flatMap((page) => page.items)
+    : [];
+  const isLoadingMoreSubs = subsLoadingInitial || subsLoadingNextPage;
+  const hasMoreSubs = !!(
+    subsPages && subsPages[subsPages.length - 1]?.nextPageToken
   );
 
   const { data: ytResults = [], error: ytError } = useSWR<Array<any>>(
@@ -63,6 +109,32 @@ export function CommandPalette({
         : null,
     fetcher,
   );
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMoreSubs && !isLoadingMoreSubs) {
+          console.log("[Observer] Load more triggered");
+          setSize(size + 1);
+        }
+      },
+      {
+        root: listRef.current,
+        threshold: 1.0,
+      },
+    );
+
+    const target = observerTargetRef.current;
+    if (target) {
+      observer.observe(target);
+    }
+
+    return () => {
+      if (target) {
+        observer.unobserve(target);
+      }
+    };
+  }, [hasMoreSubs, isLoadingMoreSubs, setSize, size]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -104,12 +176,22 @@ export function CommandPalette({
             onValueChange={setQuery}
             className="border-0 outline-none"
           />
-          <CommandList>
+          <CommandList ref={listRef}>
             <CommandEmpty>No results found.</CommandEmpty>
 
             {query === "" && (
               <CommandGroup heading="Your Subscriptions">
-                {subs?.slice(0, 10).map((ch) => {
+                {subsLoadingInitial && (
+                  <div className="flex justify-center p-4">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  </div>
+                )}
+                {subsError && (
+                  <div className="p-4 text-center text-red-500">
+                    Error loading subscriptions
+                  </div>
+                )}
+                {channels.map((ch) => {
                   const youtubeId = ch.id;
                   const isAdded = existingItemsMap?.has(youtubeId) ?? false;
                   return (
@@ -145,6 +227,12 @@ export function CommandPalette({
                     </CommandItem>
                   );
                 })}
+                <div ref={observerTargetRef} style={{ height: "1px" }} />
+                {isLoadingMoreSubs && !subsLoadingInitial && (
+                  <div className="flex justify-center p-4">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  </div>
+                )}
               </CommandGroup>
             )}
 
@@ -152,7 +240,7 @@ export function CommandPalette({
               <CommandGroup heading="YouTube Search Results">
                 {ytError && (
                   <div className="p-4 text-center text-red-500">
-                    Error searching YouTube
+                    Error searching YouTube: {ytError.message}
                   </div>
                 )}
                 {Array.isArray(ytResults) &&

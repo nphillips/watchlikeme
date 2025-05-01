@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { env } from "../env";
 import { google } from "googleapis"; // Import googleapis
 import { OAuth2Client } from "google-auth-library"; // Import OAuth2Client type
+import { getGoogleTokensForUser } from "../lib/google"; // Import the DB token fetcher
 
 // Export the interface so it can be imported elsewhere
 export interface AuthenticatedUserInfo {
@@ -29,7 +30,14 @@ function createOAuth2Client(tokens: any): OAuth2Client {
     env.GOOGLE_CLIENT_SECRET,
     `${env.ORIGIN}/api/auth/google/callback`, // Use origin from env
   );
-  client.setCredentials(tokens);
+  // Ensure we pass the correct structure to setCredentials
+  // It expects { access_token, refresh_token, expiry_date, token_type }
+  client.setCredentials({
+    access_token: tokens.access_token,
+    refresh_token: tokens.refresh_token,
+    expiry_date: tokens.expiry_date, // Assuming expiry_date is a timestamp number
+    token_type: "Bearer", // Usually Bearer
+  });
   return client;
 }
 
@@ -88,10 +96,52 @@ export const authenticateToken: RequestHandler = async (req, res, next) => {
     let authInfo: AuthenticatedUserInfo = {
       id: decodedJwtPayload.sub,
       email: decodedJwtPayload.email,
-      accessToken: null, // Default to null
-      oauth2Client: null, // Default to null
+      accessToken: null,
+      oauth2Client: null,
     };
 
+    // --- New: 4. Attempt to get Google Tokens from DB ---
+    try {
+      const userId = decodedJwtPayload.sub;
+      const googleTokens = await getGoogleTokensForUser(userId);
+      console.log(
+        `[Auth Middleware] Google tokens from DB for user ${userId}:`,
+        {
+          exists: !!googleTokens,
+          hasAccessToken: !!googleTokens?.access_token,
+          hasRefreshToken: !!googleTokens?.refresh_token,
+          expiry: googleTokens?.expiry_date
+            ? new Date(googleTokens.expiry_date)
+            : null,
+        },
+      );
+
+      if (googleTokens && googleTokens.access_token) {
+        // TODO: Implement token expiry check and refresh logic
+        // const now = Date.now();
+        // if (googleTokens.expiry_date && googleTokens.expiry_date < now) {
+        //   console.log('[Auth Middleware] Google access token expired. Attempting refresh...');
+        //   // Add refresh logic here using googleTokens.refresh_token
+        //   // If refresh fails, clear tokens and proceed without Google auth
+        // } else {
+        console.log("[Auth Middleware] Found valid Google tokens in DB.");
+        const oauth2Client = createOAuth2Client(googleTokens);
+        authInfo.accessToken = googleTokens.access_token;
+        authInfo.oauth2Client = oauth2Client;
+        // }
+      } else {
+        console.log("[Auth Middleware] No valid Google tokens found in DB.");
+      }
+    } catch (dbError) {
+      console.error(
+        "[Auth Middleware] Error fetching Google tokens from DB:",
+        dbError,
+      );
+      // Proceed without Google auth info if DB fetch fails
+    }
+    // --- End New DB Token Fetch Logic ---
+
+    /* --- Remove Old Cookie Logic ---
     // 4. Attempt to get Google Tokens
     const googleTokensCookie = req.cookies?.google_tokens;
     console.log("[Auth Middleware] Google tokens cookie check:", {
@@ -124,6 +174,7 @@ export const authenticateToken: RequestHandler = async (req, res, next) => {
         // Don't fail the request here, just proceed without Google auth info
       }
     }
+    */
 
     // 5. Attach the potentially partial authInfo to the request
     req.watchLikeMeAuthInfo = authInfo;

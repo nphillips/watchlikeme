@@ -1,22 +1,22 @@
-import { youtube, setUserCredentials } from "./youtube";
+import { youtube } from "./youtube";
 import { prisma } from "./prisma";
 import { Channel } from "@prisma/client";
+import { OAuth2Client } from "google-auth-library";
+import { google } from "googleapis";
 
 /**
  * Fetch channel details including subscriber count
  * @param channelIds Array of YouTube channel IDs
- * @param accessToken User's Google/YouTube access token
+ * @param oauth2Client Authenticated Google OAuth2 client instance
  */
 export async function fetchChannelDetails(
   channelIds: string[],
-  accessToken: string,
+  oauth2Client: OAuth2Client,
 ) {
   if (!channelIds.length) return [];
 
-  // Set up YouTube client with user credentials
-  setUserCredentials(accessToken);
+  const localYoutube = google.youtube({ version: "v3", auth: oauth2Client });
 
-  // Limit to 50 channel IDs per request (YouTube API limit)
   const chunkedChannelIds = [];
   for (let i = 0; i < channelIds.length; i += 50) {
     chunkedChannelIds.push(channelIds.slice(i, i + 50));
@@ -24,10 +24,9 @@ export async function fetchChannelDetails(
 
   const allChannelDetails = [];
 
-  // Process each chunk
   for (const chunk of chunkedChannelIds) {
     try {
-      const response = await youtube.channels.list({
+      const response = await localYoutube.channels.list({
         part: ["snippet", "statistics"],
         id: chunk,
       });
@@ -49,8 +48,14 @@ export async function fetchChannelDetails(
         allChannelDetails.push(...channelDetails);
       }
     } catch (error) {
-      console.error("Error fetching channel details:", error);
-      // Continue with other chunks even if one fails
+      console.error("Error fetching channel details chunk:", error);
+      if (
+        error instanceof Error &&
+        (error.message.includes("Invalid Credentials") ||
+          error.message.includes("invalid grant"))
+      ) {
+        throw error;
+      }
     }
   }
 
@@ -60,22 +65,20 @@ export async function fetchChannelDetails(
 /**
  * Refresh channel thumbnails if they're older than the specified threshold
  * @param channelIds Array of YouTube channel IDs
- * @param accessToken User's Google/YouTube access token
+ * @param oauth2Client Authenticated Google OAuth2 client instance
  * @param thresholdDays Number of days after which thumbnails should be refreshed (default: 7)
  */
 export async function refreshStaleChannelThumbnails(
   channelIds: string[],
-  accessToken: string,
+  oauth2Client: OAuth2Client,
   thresholdDays: number = 7,
 ) {
   if (!channelIds.length) return { updated: 0 };
 
-  // Get channels with stale thumbnails
   const now = new Date();
   const thresholdDate = new Date(now);
   thresholdDate.setDate(now.getDate() - thresholdDays);
 
-  // Find channels with stale or missing thumbnails
   const channels = await prisma.channel.findMany({
     where: {
       youtubeId: { in: channelIds },
@@ -92,16 +95,14 @@ export async function refreshStaleChannelThumbnails(
 
   if (!channels.length) return { updated: 0 };
 
-  // Get fresh data from YouTube API
   const staleChannelIds = channels.map(
     (c: { youtubeId: string }) => c.youtubeId,
   );
   const channelDetails = await fetchChannelDetails(
     staleChannelIds,
-    accessToken,
+    oauth2Client,
   );
 
-  // Update each channel
   let updatedCount = 0;
 
   for (const details of channelDetails) {
@@ -123,14 +124,13 @@ export async function refreshStaleChannelThumbnails(
 /**
  * Update the subscriber counts of channels in the database
  * @param userId User ID to update subscriptions for
- * @param accessToken User's Google/YouTube access token
+ * @param oauth2Client Authenticated Google OAuth2 client instance
  */
 export async function updateSubscriptionDetails(
   userId: string,
-  accessToken: string,
+  oauth2Client: OAuth2Client,
 ) {
   try {
-    // Get user's subscribed channels from database
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -142,13 +142,10 @@ export async function updateSubscriptionDetails(
       return { updated: 0 };
     }
 
-    // Get YouTube IDs for API call
     const channelIds = user.subscriptions.map((sub: Channel) => sub.youtubeId);
 
-    // Fetch latest details from YouTube API
-    const channelDetails = await fetchChannelDetails(channelIds, accessToken);
+    const channelDetails = await fetchChannelDetails(channelIds, oauth2Client);
 
-    // Update channels in database
     let updatedCount = 0;
     const now = new Date();
 
@@ -168,8 +165,7 @@ export async function updateSubscriptionDetails(
       updatedCount++;
     }
 
-    // Also check for and refresh stale thumbnails
-    await refreshStaleChannelThumbnails(channelIds, accessToken);
+    await refreshStaleChannelThumbnails(channelIds, oauth2Client);
 
     return { updated: updatedCount };
   } catch (error) {

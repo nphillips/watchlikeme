@@ -1,6 +1,4 @@
-import { NextResponse } from "next/server";
-import { google } from "googleapis";
-import { getAuthenticatedClient } from "@/lib/google-client";
+import { NextResponse, NextRequest } from "next/server";
 import { backendFetch } from "@/lib/backend-fetch";
 
 console.log(
@@ -8,34 +6,36 @@ console.log(
   require.resolve("@/lib/google-client"),
 );
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   console.log("Channel route incoming cookies:", request.headers.get("cookie"));
 
-  const url = new URL(request.url);
+  const url = request.nextUrl;
   const q = url.searchParams.get("q");
+  const pageToken = url.searchParams.get("pageToken");
+  const limit = url.searchParams.get("limit");
+
   if (q) {
     try {
-      const response = await backendFetch(
-        `/api/channels/search?q=${encodeURIComponent(q)}&type=channel,video`,
-        {
-          headers: { cookie: request.headers.get("cookie") || "" },
-        },
-      );
+      const backendSearchUrl = `/api/channels/search?q=${encodeURIComponent(q)}&type=channel,video`;
+      console.log(`[API Route] Proxying search to: ${backendSearchUrl}`);
+      const response = await backendFetch(backendSearchUrl, {
+        headers: { cookie: request.headers.get("cookie") || "" },
+      });
       if (response.ok) {
         const results = await response.json();
         return NextResponse.json(results);
       } else {
+        const errorText = await response.text().catch(() => "");
         console.error(
-          "Error fetching search from backend:",
-          await response.text().catch(() => ""),
+          `[API Route] Error fetching search from backend (${response.status}): ${errorText}`,
         );
         return NextResponse.json(
-          { error: "Search failed" },
+          { error: "Search failed", details: errorText },
           { status: response.status },
         );
       }
     } catch (err) {
-      console.error("Error proxying search:", err);
+      console.error("[API Route] Error proxying search:", err);
       return NextResponse.json(
         { error: "Search proxy failed" },
         { status: 500 },
@@ -44,90 +44,81 @@ export async function GET(request: Request) {
   }
 
   try {
-    const oauth2Client = await getAuthenticatedClient(request);
-
-    if (!oauth2Client) {
-      console.log("No authenticated Google client available");
+    const backendApiBaseUrl = process.env.BACKEND_URL;
+    if (!backendApiBaseUrl) {
+      console.error(
+        "[API Route] Error: BACKEND_URL environment variable is not set.",
+      );
       return NextResponse.json(
-        {
-          error: "Google account not linked",
-          message: "Please link your Google account to view your subscriptions",
-        },
-        { status: 403 },
+        { error: "Backend API URL configuration error" },
+        { status: 500 },
       );
     }
 
-    try {
-      const cookies = request.headers.get("cookie") || "";
-      const tokenMatch = cookies.match(/token=([^;]+)/);
-      const authToken = tokenMatch ? tokenMatch[1] : null;
+    const backendUrl = new URL(`${backendApiBaseUrl}/api/channels`);
+    if (limit) backendUrl.searchParams.set("limit", limit);
+    if (pageToken) backendUrl.searchParams.set("pageToken", pageToken);
 
-      const response = await backendFetch("/api/channels", {
+    console.log(
+      `[API Route] Fetching subscriptions from backend: ${backendUrl.toString()}`,
+    );
+
+    const cookies = request.headers.get("cookie") || "";
+    const tokenMatch = cookies.match(/token=([^;]+)/);
+    const authToken = tokenMatch ? tokenMatch[1] : null;
+
+    const response = await backendFetch(
+      backendUrl.pathname + backendUrl.search,
+      {
+        method: "GET",
         headers: {
           cookie: cookies,
           ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+          "Content-Type": "application/json",
         },
-      });
+      },
+    );
 
-      if (response.ok) {
-        const channels = await response.json();
+    const responseBody = await response.text();
+
+    if (response.ok) {
+      try {
+        const data = JSON.parse(responseBody);
         console.log(
-          `Retrieved ${channels.length} channels from database cache`,
+          `[API Route] Retrieved data from backend with status ${response.status}`,
         );
-        return NextResponse.json(channels);
-      } else {
+        return NextResponse.json(data);
+      } catch (parseError) {
         console.error(
-          "Error fetching from backend:",
-          await response.text().catch(() => ""),
+          "[API Route] Error parsing JSON from backend:",
+          parseError,
+          "Body:",
+          responseBody,
+        );
+        return NextResponse.json(
+          { error: "Invalid response from backend" },
+          { status: 500 },
         );
       }
-    } catch (backendError) {
-      console.error("Error fetching from backend:", backendError);
-    }
-
-    const youtube = google.youtube("v3");
-
-    const response = await youtube.subscriptions.list({
-      auth: oauth2Client,
-      part: ["snippet"],
-      mine: true,
-      maxResults: 50,
-    });
-
-    if (!response.data.items) {
-      return NextResponse.json([]);
-    }
-
-    const channels = response.data.items.map((item) => ({
-      id: item.snippet?.resourceId?.channelId,
-      title: item.snippet?.title,
-      thumbnailUrl: item.snippet?.thumbnails?.default?.url,
-      subscriberCount: 0,
-    }));
-
-    return NextResponse.json(channels);
-  } catch (error: any) {
-    console.error("Error fetching YouTube subscriptions:", error);
-
-    if (
-      error.message?.includes("invalid_grant") ||
-      error.message?.includes("token") ||
-      error.message?.includes("Token has been expired or revoked")
-    ) {
-      return NextResponse.json(
-        {
-          error: "Google authentication failed",
-          message:
-            "Your Google session has expired. Please re-link your account.",
-        },
-        { status: 403 },
+    } else {
+      console.error(
+        `[API Route] Error fetching from backend (${response.status}): ${responseBody}`,
       );
+      let errorJson = { error: "Failed to fetch subscriptions from backend" };
+      try {
+        errorJson = JSON.parse(responseBody);
+      } catch {}
+      return NextResponse.json(errorJson, { status: response.status });
     }
-
+  } catch (error: any) {
+    console.error(
+      "[API Route] Unexpected error fetching subscriptions:",
+      error,
+    );
     return NextResponse.json(
       {
         error: "Failed to fetch subscriptions",
-        message: "An error occurred while fetching your YouTube subscriptions.",
+        message: error.message || "An unexpected error occurred.",
       },
       { status: 500 },
     );

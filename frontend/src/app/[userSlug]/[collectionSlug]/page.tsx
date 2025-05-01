@@ -106,19 +106,17 @@ export default function CollectionPage() {
   }, [items]);
 
   const [isEditing, setIsEditing] = useState(false);
+  const [editableName, setEditableName] = useState<string>("");
   const [editableNote, setEditableNote] = useState<string>("");
   const [editableIsPublic, setEditableIsPublic] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (collection?.note) {
-      setEditableNote(collection.note);
-    } else {
-      setEditableNote("");
-    }
+    setEditableName(collection?.name || "");
+    setEditableNote(collection?.note || "");
     setEditableIsPublic(collection?.isPublic ?? true);
-  }, [collection?.note, collection?.isPublic]);
+  }, [collection?.name, collection?.note, collection?.isPublic]);
 
   const [isLiking, setIsLiking] = useState(false);
   const [likeError, setLikeError] = useState<string | null>(null);
@@ -241,13 +239,21 @@ export default function CollectionPage() {
     if (!collectionSlug || typeof collectionSlug !== "string" || !swrKey)
       return;
 
+    const trimmedName = editableName.trim();
+    if (!trimmedName) {
+      setSaveError("Collection name cannot be empty.");
+      return;
+    }
+
     setIsSaving(true);
     setSaveError(null);
 
-    const updates: { note?: string | null; isPublic?: boolean } = {
-      note: editableNote.trim(),
-      isPublic: editableIsPublic,
-    };
+    const updates: { name?: string; note?: string | null; isPublic?: boolean } =
+      {
+        name: trimmedName,
+        note: editableNote.trim(),
+        isPublic: editableIsPublic,
+      };
 
     try {
       await updateCollectionDetails(collectionSlug, updates);
@@ -530,10 +536,24 @@ export default function CollectionPage() {
                   <DialogHeader>
                     <DialogTitle>Edit Collection Details</DialogTitle>
                     <DialogDescription>
-                      Update the notes and visibility for this collection.
+                      Update the name, notes, and visibility for this
+                      collection.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="name-input" className="text-right">
+                        Name
+                      </Label>
+                      <Input
+                        id="name-input"
+                        value={editableName}
+                        onChange={(e) => setEditableName(e.target.value)}
+                        placeholder="Collection name..."
+                        className="col-span-3 bg-white"
+                        disabled={isSaving}
+                      />
+                    </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="note-textarea" className="text-right">
                         Note
@@ -543,10 +563,11 @@ export default function CollectionPage() {
                         value={editableNote}
                         onChange={(e) => setEditableNote(e.target.value)}
                         placeholder="Add your notes here... Supports basic markdown maybe later?"
-                        className="col-span-3 h-32"
+                        className="col-span-3 h-32 bg-white"
+                        disabled={isSaving}
                       />
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
+                    <div className="hidden grid-cols-4 items-center gap-4">
                       <Label htmlFor="public-switch" className="text-right">
                         Public
                       </Label>
@@ -628,6 +649,7 @@ export default function CollectionPage() {
                       variant="outline"
                       onClick={() => setIsSharing(false)}
                       disabled={isGrantingAccess}
+                      className="bg-white"
                     >
                       Cancel
                     </Button>

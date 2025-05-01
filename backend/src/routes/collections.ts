@@ -626,34 +626,62 @@ router.get("/:id", (req, res) => {
   res.json({ message: "Collection retrieval endpoint" });
 });
 
-// --- Update Collection Details (e.g., Note, isPublic) ---
+// Define a type matching the specific select structure
+type SelectedCollectionData = Prisma.CollectionGetPayload<{
+  select: {
+    id: true;
+    slug: true;
+    name: true;
+    description: true;
+    note: true;
+    isPublic: true;
+    userId: true;
+    createdAt: true;
+    updatedAt: true;
+    owner: { select: { username: true } };
+    _count: { select: { likes: true; items: true } };
+    accessGrants: {
+      select: {
+        grantedToUser: { select: { username: true; id: true } };
+      };
+    };
+  };
+}>;
+
+// --- Update Collection Details (e.g., Name, Note, isPublic) ---
 router.put("/:collectionSlug", authenticateToken, async (req, res) => {
-  const authInfo = req.watchLikeMeAuthInfo;
+  const authInfo = req.watchLikeMeAuthInfo!;
   const { collectionSlug } = req.params;
-  // Expecting { note?: string | null, isPublic?: boolean } in the body
-  const { note, isPublic } = req.body as {
+  const { name, note, isPublic } = req.body as {
+    name?: string;
     note?: string | null;
     isPublic?: boolean;
   };
 
-  if (!authInfo) {
-    return res.status(401).json({ error: "User not authenticated" });
-  }
-
-  // Validate input - at least one field must be provided for update
-  if (note === undefined && isPublic === undefined) {
+  // Input validation
+  if (name === undefined && note === undefined && isPublic === undefined) {
     return res
       .status(400)
-      .json({ error: "Missing 'note' or 'isPublic' field in request body" });
+      .json({
+        error: "No update fields provided ('name', 'note', 'isPublic').",
+      });
   }
 
-  // Construct update data object conditionally
-  const updateData: { note?: string | null; isPublic?: boolean } = {};
-  if (note !== undefined) {
-    updateData.note = note; // Allow setting null to clear
+  const updateData: Prisma.CollectionUpdateArgs["data"] = {}; // Use correct type
+  if (name !== undefined) {
+    const trimmedName = name.trim();
+    if (!trimmedName)
+      return res
+        .status(400)
+        .json({ error: "Collection name cannot be empty." });
+    if (trimmedName.length > 100)
+      return res
+        .status(400)
+        .json({ error: "Collection name cannot exceed 100 characters." });
+    updateData.name = trimmedName;
   }
+  if (note !== undefined) updateData.note = note;
   if (isPublic !== undefined) {
-    // Ensure profile collection cannot be made private?
     if (collectionSlug === "profile" && isPublic === false) {
       return res
         .status(400)
@@ -663,34 +691,36 @@ router.put("/:collectionSlug", authenticateToken, async (req, res) => {
   }
 
   try {
-    // 1. Find the collection first to ensure ownership
-    const collection = await prisma.collection.findUnique({
-      where: { userId_slug: { userId: authInfo.id, slug: collectionSlug } },
-      select: { id: true },
-    });
-
-    if (!collection) {
-      console.log(
-        `[Put Collection] Collection ${collectionSlug} not found for user ${authInfo.id}`,
-      );
-      return res
-        .status(404)
-        .json({ error: "Collection not found or not owned by user" });
-    }
-
-    // 2. Update the collection
-    const updatedCollection = await prisma.collection.update({
-      where: { id: collection.id },
-      data: updateData, // Apply the conditional updates
+    // Perform the update
+    await prisma.collection.update({
+      where: {
+        userId_slug: {
+          userId: authInfo.id,
+          slug: collectionSlug,
+        },
+      },
+      data: updateData,
     });
 
     console.log(
-      `[Put Collection] Updated fields for collection ${collectionSlug} (ID: ${collection.id})`,
+      `[Put Collection] Updated fields for collection ${collectionSlug}`,
     );
-    res.json(updatedCollection);
+    // Return success with no content, frontend will refetch via mutate
+    res.status(204).send();
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2025") {
+        // Record to update not found
+        console.error(
+          `[Put Collection] Update failed: Collection ${collectionSlug} not found for user ${authInfo.id}`,
+        );
+        return res
+          .status(404)
+          .json({ error: "Collection not found or not owned by user." });
+      }
+    }
     console.error(
-      `[Put Collection] Error updating collection ${collectionSlug}:`,
+      `[Put Collection] Error updating collection ${collectionSlug} for user ${authInfo.id}:`,
       error,
     );
     res.status(500).json({ error: "Failed to update collection" });

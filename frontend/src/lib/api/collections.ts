@@ -216,12 +216,15 @@ export async function removeCollectionItem(
 
 export async function updateCollectionDetails(
   collectionSlug: string,
-  updates: { note?: string | null; isPublic?: boolean },
-): Promise<Collection> {
+  updates: { name?: string; note?: string | null; isPublic?: boolean },
+): Promise<void> {
   const path = `/api/collections/${collectionSlug}`;
   console.log(`[API Client] Updating details for: ${path} via PUT`, updates);
 
-  const body: { note?: string | null; isPublic?: boolean } = {};
+  const body: { name?: string; note?: string | null; isPublic?: boolean } = {};
+  if (updates.name !== undefined) {
+    body.name = updates.name.trim();
+  }
   if (updates.note !== undefined) {
     body.note = updates.note;
   }
@@ -233,6 +236,7 @@ export async function updateCollectionDetails(
     console.warn(
       "[API Client] updateCollectionDetails called with no fields to update.",
     );
+    return;
   }
 
   const response = await backendFetch(path, {
@@ -243,36 +247,36 @@ export async function updateCollectionDetails(
 
   console.log(`[API Client] PUT ${path} status: ${response.status}`);
 
-  if (!response.ok) {
-    let errorBody = `Failed to update collection details: ${response.statusText}`;
-    const contentType = response.headers.get("content-type");
-    try {
-      if (contentType && contentType.includes("application/json")) {
-        const body = await response.json();
-        errorBody = body.error || body.message || errorBody;
-        console.error("[API Client] Error response body (JSON):", body);
-      } else {
-        const textBody = await response.text();
-        if (textBody) {
-          errorBody = textBody;
-        } else {
-          console.log("[API Client] No error body returned.");
-        }
-      }
-    } catch /* e */ {
-      // If parsing error response fails, ignore the parsing error itself,
-      // just throw the original status text error.
-      console.error("[API Client] Failed to parse/read error response body");
-    }
-    throw new Error(`${errorBody} (Status: ${response.status})`);
+  if (response.ok && (response.status === 204 || response.status === 200)) {
+    console.log(
+      `[API Client] Successfully updated collection details for ${collectionSlug}.`,
+    );
+    return;
   }
 
-  const updatedCollection: Collection = await response.json();
-  console.log(
-    `[API Client] Successfully updated collection details:`,
-    updatedCollection,
-  );
-  return updatedCollection;
+  let errorBody = `Failed to update collection details: ${response.statusText}`;
+  const contentType = response.headers.get("content-type");
+  try {
+    if (contentType && contentType.includes("application/json")) {
+      const body = await response.json();
+      errorBody = body.error || body.message || errorBody;
+      console.error("[API Client] Error response body (JSON):", body);
+    } else {
+      const textBody = await response.text();
+      if (textBody) {
+        errorBody = textBody;
+        console.error(
+          "[API Client] Error response body (non-JSON/text):",
+          textBody,
+        );
+      } else {
+        console.log("[API Client] No error body returned.");
+      }
+    }
+  } catch (e) {
+    console.error("[API Client] Failed to parse/read error response body", e);
+  }
+  throw new Error(`${errorBody} (Status: ${response.status})`);
 }
 
 export async function likeCollection(collectionSlug: string): Promise<void> {

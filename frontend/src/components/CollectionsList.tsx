@@ -40,9 +40,6 @@ const CollectionsList = ({
         </div>
         <div className="flex items-center justify-between">
           <h2 className="mb-2 text-lg font-semibold">My Collections</h2>
-          <div className="text-xs text-gray-500 dark:text-gray-400">
-            created:
-          </div>
         </div>
         {ownedCollections.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -110,7 +107,6 @@ const CollectionsList = ({
       <div>
         <div className="flex items-center justify-between">
           <h2 className="mb-2 text-lg font-semibold">Shared With Me</h2>
-          <div className="text-xs text-gray-500 dark:text-gray-400">from:</div>
         </div>
         {sharedCollections.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">

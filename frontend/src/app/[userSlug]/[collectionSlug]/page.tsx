@@ -19,7 +19,7 @@ import {
 } from "@/interfaces";
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 import { Heart, Share2 } from "lucide-react";
 import {
   Dialog,
@@ -149,7 +149,8 @@ export default function CollectionPage() {
   );
 
   const handleAddItem = async (item: PaletteItem) => {
-    if (!collectionSlug || typeof collectionSlug !== "string") return;
+    if (!collectionSlug || typeof collectionSlug !== "string" || !swrKey)
+      return;
     setIsAdding(true);
     setAddError(null);
     let itemType: "channel" | "video";
@@ -182,6 +183,7 @@ export default function CollectionPage() {
       console.log("Attempting to add item:", requestBody);
       await addCollectionItem(collectionSlug, requestBody);
       console.log("Item added successfully, revalidating list...");
+      mutate(swrKey);
     } catch (err) {
       console.error("Error adding collection item:", err);
       if (err instanceof Error && err.message.includes("Item already exists")) {
@@ -196,12 +198,14 @@ export default function CollectionPage() {
   };
 
   const handleRemoveItem = async (collectionItemId: string) => {
-    if (!collectionSlug || typeof collectionSlug !== "string") return;
+    if (!collectionSlug || typeof collectionSlug !== "string" || !swrKey)
+      return;
     setRemovingItemId(collectionItemId);
     setRemoveError(null);
     try {
       await removeCollectionItem(collectionSlug, collectionItemId);
       console.log(`Item ${collectionItemId} removed, revalidating list...`);
+      mutate(swrKey);
     } catch (err) {
       console.error(`Error removing item ${collectionItemId}:`, err);
       setRemoveError(
@@ -234,7 +238,8 @@ export default function CollectionPage() {
   };
 
   const handleSaveChanges = async () => {
-    if (!collectionSlug || typeof collectionSlug !== "string") return;
+    if (!collectionSlug || typeof collectionSlug !== "string" || !swrKey)
+      return;
 
     setIsSaving(true);
     setSaveError(null);
@@ -247,6 +252,8 @@ export default function CollectionPage() {
     try {
       await updateCollectionDetails(collectionSlug, updates);
       console.log("Collection details updated successfully, revalidating...");
+      mutate(swrKey);
+      setIsEditing(false);
     } catch (err) {
       console.error("Error updating collection details:", err);
       setSaveError(

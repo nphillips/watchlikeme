@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { OAuth2Client } from "google-auth-library";
 import { env } from "@/env";
 
 if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
@@ -17,206 +15,101 @@ const oauth2Client = new OAuth2Client(
 */
 
 export async function GET(request: Request) {
-  // Define baseUrl and redirectTo at the top level of the GET handler
-  const baseUrl = env.ORIGIN || "http://localhost:3000";
+  const frontendBaseUrl =
+    env.ORIGIN || env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
   const backendUrl = env.BACKEND_URL || "http://localhost:8888";
+  const requestUrl = new URL(request.url);
 
-  const redirectTo = (path: string) => {
-    const fullUrl = new URL(path, baseUrl);
-    console.log("Redirecting to:", fullUrl.toString());
-    return NextResponse.redirect(fullUrl);
-  };
+  console.log("[Frontend Callback] Received request:", requestUrl.toString());
+
+  // Forward all query parameters from the original request to the backend
+  const backendCallbackUrl = new URL(
+    `/api/auth/google/callback${requestUrl.search}`, // Append original search params (code, state, etc.)
+    backendUrl,
+  );
+
+  console.log(
+    "[Frontend Callback] Proxying to backend:",
+    backendCallbackUrl.toString(),
+  );
 
   try {
-    const url = new URL(request.url);
-
-    const code = url.searchParams.get("code");
-    const error = url.searchParams.get("error");
-    const state = url.searchParams.get("state");
-
-    console.log("Received callback with:", { code, error, state });
-    console.log("OAuth client configuration:", {
-      clientId: env.GOOGLE_CLIENT_ID ? "set" : "not set",
-      clientSecret: env.GOOGLE_CLIENT_SECRET ? "set" : "not set",
-      redirectUri: `${
-        env.ORIGIN || "http://localhost:3000"
-      }/api/auth/google/callback`,
+    // Make the request to the backend's callback endpoint.
+    // We expect the backend to handle the code exchange, user lookup/creation,
+    // JWT generation, setting the 'token' cookie, and issuing a redirect.
+    // We set redirect: 'manual' so fetch doesn't automatically follow the redirect,
+    // allowing us to capture the headers (like Set-Cookie) and the redirect location.
+    const backendResponse = await fetch(backendCallbackUrl.toString(), {
+      method: "GET", // Or match the method expected by your backend endpoint
+      headers: {
+        // Forward any necessary headers if needed, but usually none for this callback
+      },
+      redirect: "manual", // IMPORTANT: Do not follow redirects automatically
     });
 
-    const isLinkingAccount = state === "link_account";
-
-    if (error) {
-      console.error("OAuth error:", error);
-      return redirectTo(
-        isLinkingAccount ? "/" : `/?error=${encodeURIComponent(error)}`,
-      );
-    }
-
-    if (!code) {
-      console.error("No code received");
-      return redirectTo(
-        isLinkingAccount
-          ? "/"
-          : `/?error=${encodeURIComponent("no_code_received")}`,
-      );
-    }
-
-    const updatedOauth2Client = new OAuth2Client(
-      env.GOOGLE_CLIENT_ID,
-      env.GOOGLE_CLIENT_SECRET,
-      `${baseUrl}/api/auth/google/callback`,
+    console.log(
+      `[Frontend Callback] Backend response status: ${backendResponse.status}`,
+    );
+    console.log(
+      "[Frontend Callback] Backend response headers:",
+      JSON.stringify(Object.fromEntries(backendResponse.headers.entries())),
     );
 
-    try {
-      const { tokens } = await updatedOauth2Client.getToken(code);
-
-      const tokenData = tokens as any;
-      if (tokenData.expiry_date === undefined && tokenData.expires_in) {
-        tokenData.expiry_date = Date.now() + tokenData.expires_in * 1000;
+    // Create a new response to send back to the browser
+    // Use the status code from the backend response (usually 3xx for redirect)
+    const responseHeaders = new Headers();
+    // Copy essential headers from backend response to frontend response
+    backendResponse.headers.forEach((value, key) => {
+      // IMPORTANT: Especially copy 'Set-Cookie' and 'Location' headers
+      if (
+        key.toLowerCase() === "set-cookie" ||
+        key.toLowerCase() === "location"
+      ) {
+        // For Set-Cookie, append might be safer if multiple cookies are set,
+        // but usually the backend sets one auth cookie here.
+        // Using set should be fine if the backend only sets the 'token' cookie here.
+        responseHeaders.set(key, value);
+        console.log(`[Frontend Callback] Forwarding header: ${key}=${value}`);
       }
+      // You might need to forward other headers depending on your setup
+    });
 
-      updatedOauth2Client.setCredentials(tokens);
+    // If backend sent a redirect (Location header), use that URL
+    const redirectLocation = backendResponse.headers.get("location");
+    let finalRedirectUrl: URL;
 
-      const ticket = await updatedOauth2Client.verifyIdToken({
-        idToken: tokens.id_token!,
-        audience: env.GOOGLE_CLIENT_ID,
-      });
-
-      const payload = ticket.getPayload();
-
-      if (!payload) {
-        throw new Error("No payload received from Google");
-      }
-
-      // Remove unused 'name' and 'picture' from destructuring
-      // const { sub: googleId, email, name, picture } = payload;
-      const { sub: googleId, email } = payload;
-
-      if (isLinkingAccount) {
-        const cookieStore = await cookies();
-        const token = cookieStore.get("token")?.value;
-
-        if (!token) {
-          console.error("No JWT token found for account linking");
-          return redirectTo("/login?error=auth_required");
-        }
-
-        console.log("Using backend URL for account linking:", backendUrl);
-
-        try {
-          const linkResult = await fetch(`${backendUrl}/api/auth/link-google`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              googleId: googleId,
-              googleEmail: email,
-              googleTokens: tokens,
-            }),
-          });
-
-          if (!linkResult.ok) {
-            const errorData = await linkResult.json();
-            console.error("Failed to link account:", errorData);
-            return redirectTo(
-              `/?error=${encodeURIComponent(
-                errorData.message || "Failed to link account",
-              )}`,
-            );
-          }
-
-          const redirectUrl = new URL("/?success=account_linked", baseUrl);
-          const redirectResponse = redirectTo(redirectUrl.toString());
-
-          const tokensWithExpiry = { ...tokens } as any;
-          if (
-            tokensWithExpiry.expiry_date === undefined &&
-            tokensWithExpiry.expires_in
-          ) {
-            tokensWithExpiry.expiry_date =
-              Date.now() + tokensWithExpiry.expires_in * 1000;
-          }
-
-          const googleTokensJson = JSON.stringify(tokensWithExpiry);
-          redirectResponse.cookies.set("google_tokens", googleTokensJson, {
-            secure: process.env.NODE_ENV === "production",
-            httpOnly: true,
-            path: "/",
-            maxAge: 30 * 24 * 60 * 60,
-          });
-
-          return redirectResponse;
-        } catch (linkError) {
-          console.error("Account linking error:", linkError);
-          return redirectTo(
-            `/login?error=${encodeURIComponent("failed_to_link_account")}`,
-          );
-        }
-      }
-
-      console.log("Using backend URL for normal auth flow:", backendUrl);
-
+    if (redirectLocation) {
+      // If backend provided a full URL, use it. If relative, resolve against frontend base.
       try {
-        const checkUserResponse = await fetch(
-          `${backendUrl}/api/users/by-email?email=${encodeURIComponent(
-            email!,
-          )}`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          },
-        );
-
-        const userData = await checkUserResponse.json();
-
-        const redirectResponse = NextResponse.redirect(
-          new URL(userData.exists ? "/" : "/register?fromGoogle=true", baseUrl),
-        );
-
-        const tokensWithExpiry = { ...tokens } as any;
-        if (
-          tokensWithExpiry.expiry_date === undefined &&
-          tokensWithExpiry.expires_in
-        ) {
-          tokensWithExpiry.expiry_date =
-            Date.now() + tokensWithExpiry.expires_in * 1000;
-        }
-
-        const googleTokensJson = JSON.stringify(tokensWithExpiry);
-        redirectResponse.cookies.set("google_tokens", googleTokensJson, {
-          secure: process.env.NODE_ENV === "production",
-          httpOnly: true,
-          path: "/",
-          maxAge: 30 * 24 * 60 * 60,
-        });
-
-        redirectResponse.cookies.set("auth_success", "true", {
-          secure: process.env.NODE_ENV === "production",
-          httpOnly: true,
-          path: "/",
-          maxAge: 5 * 60,
-        });
-
-        return redirectResponse;
-      } catch (error) {
-        console.error("Error in normal auth flow:", error);
-        return redirectTo(
-          `/?error=${encodeURIComponent("authentication_failed")}`,
-        );
+        finalRedirectUrl = new URL(redirectLocation);
+      } catch /* istanbul ignore next */ {
+        // If backend sent a relative path (e.g., '/'), resolve it against the frontend base URL
+        finalRedirectUrl = new URL(redirectLocation, frontendBaseUrl);
       }
-    } catch (error) {
-      console.error("Token exchange error:", error);
-      return redirectTo(
-        `/?error=${encodeURIComponent("token_exchange_failed")}`,
+      console.log(
+        `[Frontend Callback] Redirecting browser to: ${finalRedirectUrl.toString()}`,
       );
+    } else {
+      // Fallback redirect if backend didn't provide one (shouldn't happen in normal flow)
+      console.warn(
+        "[Frontend Callback] Backend did not send a Location header. Falling back to root.",
+      );
+      finalRedirectUrl = new URL("/", frontendBaseUrl);
     }
+
+    // Return a new Response object with the backend's status, proxied headers, and no body
+    // The browser will follow the 'Location' header.
+    return new Response(null, {
+      status: backendResponse.status,
+      headers: responseHeaders,
+    });
   } catch (error) {
-    console.error("Callback error:", error);
-    // Now redirectTo is accessible here
-    return redirectTo(`/?error=${encodeURIComponent("authentication_failed")}`);
+    console.error("[Frontend Callback] Error proxying to backend:", error);
+    // Redirect to a generic error page on the frontend
+    const errorRedirectUrl = new URL(
+      `/?error=${encodeURIComponent("callback_proxy_failed")}`,
+      frontendBaseUrl,
+    );
+    return NextResponse.redirect(errorRedirectUrl);
   }
 }

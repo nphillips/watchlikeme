@@ -1,6 +1,27 @@
 # WatchLikeMe
 
-A platform for discovering and sharing YouTube content.
+**WatchLikeMe** is a full-stack application for curating and sharing your favorite YouTube content.
+
+Built with [Next.js](https://nextjs.org/), [Express](https://expressjs.com/), [Prisma](https://www.prisma.io/), and [PostgreSQL](https://www.postgresql.org/), the app lets users selectively showcase their YouTube subscriptions, recently watched videos, and playlists via public profile pages.
+
+This was built as my capstone project for Fullstack Academy’s Software Engineering program. I handled the design, full-stack architecture, and implementation end to end.
+
+### 🚀 Features
+
+- Google OAuth login (via YouTube)
+- Public user profiles (e.g. `watchlikeme.com/john-doe`)
+- Curated collections for different audiences (e.g. “Stuff I send my dad”)
+- Tiptap-powered rich text annotations
+- Server-side rendering (Next.js) with fully custom backend
+- Token-based authentication with JWT
+- Built-in YouTube data fetching and sync
+
+### 🛠 Tech Stack
+
+- **Frontend**: Next.js, Tailwind CSS, Shadcn UI, Tiptap
+- **Backend**: Express, PostgreSQL, Prisma, Zod
+- **Auth**: Google OAuth + JWT
+- **Deployment**: Netlify + custom server API
 
 ---
 

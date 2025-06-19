@@ -50,7 +50,7 @@ app.use(cookieParser());
 // Determine allowed origin based on environment
 const allowedOrigin =
   process.env.NODE_ENV === "production"
-    ? "https://watchlikeme-staging.netlify.app" // Your Netlify URL
+    ? process.env.FRONTEND_URL || "https://watchlikeme-staging.netlify.app" // Will be your frontend URL
     : env.ORIGIN; // Use env.ORIGIN (localhost) for local dev
 
 console.log(`[CORS] Configuring for origin: ${allowedOrigin}`); // Add log
@@ -81,7 +81,9 @@ passport.use(
     {
       clientID: env.GOOGLE_CLIENT_ID!,
       clientSecret: env.GOOGLE_CLIENT_SECRET!,
-      callbackURL: `${env.ORIGIN}/api/auth/google/callback`,
+      callbackURL: process.env.NODE_ENV === "production" 
+        ? `${process.env.BACKEND_URL || "https://watchlikeme-backend.fly.dev"}/api/auth/google/callback`
+        : `${env.ORIGIN}/api/auth/google/callback`,
     },
     async (_: string, __: string, profile: Profile, done: VerifyCallback) => {
       try {

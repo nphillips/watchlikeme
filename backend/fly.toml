@@ -1,0 +1,32 @@
+app = "watchlikeme-backend"
+primary_region = "iad"
+
+[build]
+
+[env]
+  NODE_ENV = "production"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8080
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+
+  [[services.ports]]
+    port = 443
+    handlers = ["http", "tls"]
+
+[deploy]
+  release_command = "npx prisma migrate deploy"
+
+[[mounts]]
+  source = "watchlikeme_data"
+  destination = "/data"

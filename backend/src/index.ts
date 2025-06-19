@@ -8,7 +8,6 @@ import {
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import jwt from "jsonwebtoken";
-import serverless from "serverless-http";
 import { PrismaClient } from "@prisma/client";
 import slugify from "slugify";
 import path from "path";
@@ -263,12 +262,8 @@ app.get(
   googleCallbackHandler, // Use the typed handler
 );
 
-// Start the server if we're not in a serverless environment
-if (!process.env.NETLIFY) {
-  const PORT = process.env.PORT || 8888;
-  app.listen(PORT, () => {
-    console.log(`Backend server running at http://localhost:${PORT}`);
-  });
-}
-
-export const handler = serverless(app);
+// Start the server
+const PORT = Number(process.env.PORT) || 8080;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Backend server running on port ${PORT}`);
+});

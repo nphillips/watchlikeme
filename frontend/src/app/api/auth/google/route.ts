@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { google } from "googleapis";
 import { env } from "@/env";
 

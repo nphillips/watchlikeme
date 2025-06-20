@@ -84,7 +84,7 @@ export default function Home() {
   };
 
   const handleLinkGoogle = () => {
-    window.location.href = "/api/auth/google?linkAccount=true";
+    window.location.href = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/google?linkAccount=true`;
   };
 
   if (loading) {

@@ -51,13 +51,13 @@ export const verifyToken: express.RequestHandler = (req, res, next) => {
   }
 };
 
-router.get("/google", (req, res) => {
-  res.json({ message: "Google auth endpoint" });
-});
+// router.get("/google", (req, res) => {
+//   res.json({ message: "Google auth endpoint" });
+// });
 
-router.get("/google/callback", (req, res) => {
-  res.json({ message: "Google auth callback endpoint" });
-});
+// router.get("/google/callback", (req, res) => {
+//   res.json({ message: "Google auth callback endpoint" });
+// });
 
 router.post("/login", async (req, res) => {
   try {

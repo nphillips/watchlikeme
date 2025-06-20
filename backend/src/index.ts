@@ -69,6 +69,12 @@ app.use(
 // @ts-ignore // Keep ignore for persistent type error
 app.use(passport.initialize());
 
+// Add a simple test endpoint
+app.get("/test", (req, res) => {
+  console.log("=== TEST ENDPOINT HIT ===");
+  res.json({ message: "Backend is working!", timestamp: new Date().toISOString() });
+});
+
 // Mount routes
 app.use("/api", router);
 app.use("/api/auth", authRoutes);
@@ -254,15 +260,36 @@ const googleCallbackHandler: RequestHandler = (req, res, next) => {
   res.redirect("/");
 };
 
-// @ts-ignore // Ignore persistent type error on this specific route definition
-app.get(
-  "/api/auth/google/callback",
-  passport.authenticate("google", {
-    session: false,
-    failureRedirect: "/login?error=googleAuthFailed",
-  }),
-  googleCallbackHandler, // Use the typed handler
-);
+// Add debugging middleware before the callback route
+app.get("/api/auth/google/callback", (req, res, next) => {
+  console.log("=== BACKEND GOOGLE CALLBACK ROUTE HIT ===");
+  console.log("Request URL:", req.url);
+  console.log("Request query:", req.query);
+  console.log("Request headers:", {
+    'user-agent': req.get('user-agent'),
+    'origin': req.get('origin'),
+    'referer': req.get('referer')
+  });
+  next();
+}, passport.authenticate("google", {
+  session: false,
+  failureRedirect: "/login?error=googleAuthFailed",
+}), (req, res, next) => {
+  console.log("=== PASSPORT AUTHENTICATION COMPLETED ===");
+  console.log("User object:", req.user);
+  next();
+}, googleCallbackHandler);
+
+// Add catch-all debugging for any unmatched routes
+app.use((req, res, next) => {
+  if (req.path.includes('/api/auth/google')) {
+    console.log("=== UNMATCHED GOOGLE AUTH ROUTE ===");
+    console.log("Method:", req.method);
+    console.log("Path:", req.path);
+    console.log("Full URL:", req.url);
+  }
+  next();
+});
 
 // Start the server
 const PORT = Number(process.env.PORT) || 8080;

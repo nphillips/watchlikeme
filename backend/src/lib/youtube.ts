@@ -1,17 +1,22 @@
 import { google } from "googleapis";
 import { env } from "../env";
 
+// Determine the correct callback URL based on environment
+const callbackURL = process.env.NODE_ENV === "production" 
+  ? `${process.env.BACKEND_URL || "https://watchlikeme-backend.fly.dev"}/api/auth/google/callback`
+  : `${env.ORIGIN}/api/auth/google/callback`;
+
 console.log("Initializing YouTube client with config:", {
   hasClientId: !!env.GOOGLE_CLIENT_ID,
   hasClientSecret: !!env.GOOGLE_CLIENT_SECRET,
-  redirectUri: `${env.ORIGIN}/api/auth/google/callback`,
+  redirectUri: callbackURL,
 });
 
 // Initialize the OAuth2 client
 const oauth2Client = new google.auth.OAuth2(
   env.GOOGLE_CLIENT_ID,
   env.GOOGLE_CLIENT_SECRET,
-  `${env.ORIGIN}/api/auth/google/callback`
+  callbackURL
 );
 
 // Create YouTube client

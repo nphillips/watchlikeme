@@ -17,10 +17,16 @@ const oauth2Client = new OAuth2Client(
 export async function GET(request: Request) {
   const frontendBaseUrl =
     env.ORIGIN || env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  const backendUrl = env.BACKEND_URL || "http://localhost:8888";
+  const backendUrl = env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8888";
   const requestUrl = new URL(request.url);
 
   console.log("[Frontend Callback] Received request:", requestUrl.toString());
+  console.log("[Frontend Callback] Using backend URL:", backendUrl);
+  console.log("[Frontend Callback] Available env vars:", {
+    BACKEND_URL: env.BACKEND_URL,
+    NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL,
+    NODE_ENV: process.env.NODE_ENV
+  });
 
   // Forward all query parameters from the original request to the backend
   const backendCallbackUrl = new URL(

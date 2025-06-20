@@ -40,18 +40,27 @@ export async function GET(request: Request) {
   );
 
   try {
+    console.log("[Frontend Callback] Making request to:", backendCallbackUrl.toString());
+    
     // Make the request to the backend's callback endpoint.
     // We expect the backend to handle the code exchange, user lookup/creation,
     // JWT generation, setting the 'token' cookie, and issuing a redirect.
     // We set redirect: 'manual' so fetch doesn't automatically follow the redirect,
     // allowing us to capture the headers (like Set-Cookie) and the redirect location.
-    const backendResponse = await fetch(backendCallbackUrl.toString(), {
-      method: "GET", // Or match the method expected by your backend endpoint
-      headers: {
-        // Forward any necessary headers if needed, but usually none for this callback
-      },
-      redirect: "manual", // IMPORTANT: Do not follow redirects automatically
-    });
+    const backendResponse = await Promise.race([
+      fetch(backendCallbackUrl.toString(), {
+        method: "GET",
+        headers: {
+          'User-Agent': 'Netlify-Frontend-Proxy'
+        },
+        redirect: "manual", // IMPORTANT: Do not follow redirects automatically
+      }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Backend request timeout')), 10000)
+      )
+    ]) as Response;
+    
+    console.log("[Frontend Callback] Backend response received, status:", backendResponse.status);
 
     console.log(
       `[Frontend Callback] Backend response status: ${backendResponse.status}`,
@@ -105,6 +114,8 @@ export async function GET(request: Request) {
 
     // Return a new Response object with the backend's status, proxied headers, and no body
     // The browser will follow the 'Location' header.
+    console.log("[Frontend Callback] Returning response with status:", backendResponse.status, "and headers:", Object.fromEntries(responseHeaders.entries()));
+    
     return new Response(null, {
       status: backendResponse.status,
       headers: responseHeaders,

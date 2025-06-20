@@ -52,7 +52,7 @@ export function useAuth() {
   const revalidateAuth = checkAuth;
 
   const handleLinkGoogle = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/google?linkAccount=true`;
+    window.location.href = "/api/auth/google?linkAccount=true";
   };
 
   return {

@@ -133,7 +133,7 @@ export function LoginForm() {
               type="button"
               variant="outline"
               className="flex w-full items-center justify-center gap-2"
-              onClick={() => (window.location.href = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/google`)}
+              onClick={() => (window.location.href = "/api/auth/google")}
             >
               <svg
                 viewBox="0 0 24 24"
@@ -187,7 +187,7 @@ export function LoginForm() {
         </div>
 
         <Link
-          href={`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/google`}
+          href="/api/auth/google"
           className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
         >
           <svg

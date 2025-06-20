@@ -34,5 +34,12 @@ export async function GET(request: Request) {
     redirectUri: `${baseUrl}/api/auth/google/callback`,
   });
 
-  return NextResponse.redirect(authUrl);
+  // Force a proper redirect by creating a Response with explicit redirect headers
+  return new Response(null, {
+    status: 302,
+    headers: {
+      'Location': authUrl,
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+    },
+  });
 }

@@ -15,6 +15,9 @@ const oauth2Client = new OAuth2Client(
 */
 
 export async function GET(request: Request) {
+  // Add immediate debugging
+  console.log("=== FRONTEND CALLBACK ROUTE EXECUTED ===");
+  
   const frontendBaseUrl =
     env.ORIGIN || env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
   const backendUrl = env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8888";

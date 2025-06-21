@@ -213,9 +213,14 @@ const googleCallbackHandler: RequestHandler = (req, res, next) => {
   // Cast needed because Passport types req.user loosely
   const user = req.user as User & { promptPassword?: boolean };
 
+  // Determine frontend URL for redirects
+  const frontendUrl = process.env.NODE_ENV === "production"
+    ? process.env.FRONTEND_URL || "https://watchlikeme-staging.netlify.app"
+    : env.ORIGIN || "http://localhost:3000";
+
   if (!user) {
     console.error("Google callback missing user object!");
-    return res.redirect("/login?error=googleAuthFailed");
+    return res.redirect(`${frontendUrl}/login?error=googleAuthFailed`);
   }
 
   // Check for registration needed
@@ -223,7 +228,7 @@ const googleCallbackHandler: RequestHandler = (req, res, next) => {
     console.log(
       "Google auth successful, but no WLM account linked. Redirecting to registration.",
     );
-    return res.redirect("/register?fromGoogle=true");
+    return res.redirect(`${frontendUrl}/register?fromGoogle=true`);
   }
 
   // Check if password prompt is needed (existing user with password)
@@ -231,7 +236,7 @@ const googleCallbackHandler: RequestHandler = (req, res, next) => {
     console.log(
       `Google auth successful for existing WLM user ${user.id}, but password exists. Redirecting to login.`,
     );
-    const redirectUrl = `/login?email=${encodeURIComponent(
+    const redirectUrl = `${frontendUrl}/login?email=${encodeURIComponent(
       user.email,
     )}&message=passwordRequired`;
     return res.redirect(redirectUrl);
@@ -257,7 +262,7 @@ const googleCallbackHandler: RequestHandler = (req, res, next) => {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
   });
-  res.redirect("/");
+  res.redirect(`${frontendUrl}/`);
 };
 
 // Add debugging middleware before the callback route
